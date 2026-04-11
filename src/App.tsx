@@ -212,7 +212,12 @@ export function App() {
           position: "relative",
         }}
       >
-        {view === "compose" && selectedFolder && <ComposeScreen folderId={selectedFolder} />}
+        {view === "compose" && selectedFolder && (
+          <ComposeScreen
+            folderId={selectedFolder}
+            onDiscard={() => setView("list")}
+          />
+        )}
         {view === "thread" && selectedThread && (
           <ThreadDetail thread={selectedThread} />
         )}

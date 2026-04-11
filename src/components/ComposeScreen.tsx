@@ -15,9 +15,10 @@ import { loadComposeDraft, saveComposeDraft, clearComposeDraft } from "../drafts
 
 interface ComposeScreenProps {
   folderId: string;
+  onDiscard: () => void;
 }
 
-export function ComposeScreen({ folderId }: ComposeScreenProps) {
+export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   const draft = loadComposeDraft(folderId);
   const [to, setTo] = useState<Contact[]>(draft?.to ?? []);
   const [subject, setSubject] = useState(draft?.subject ?? "");
@@ -56,9 +57,7 @@ export function ComposeScreen({ folderId }: ComposeScreenProps) {
 
   const handleDiscard = () => {
     clearComposeDraft(folderId);
-    setTo([]);
-    setSubject("");
-    setBody("");
+    onDiscard();
   };
 
   return (
