@@ -1,5 +1,9 @@
 import {
+  Autocomplete,
   Box,
+  Chip,
+  IconButton,
+  Tooltip,
   Typography,
   Divider,
   Button,
@@ -8,13 +12,20 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/Send";
-import ReplyAllIcon from "@mui/icons-material/ReplyAll";
-import type { MailThread } from "../types";
+import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import type { Contact, MailThread } from "../types";
 import { useState, useEffect, useCallback } from "react";
 import { loadReplyDraft, saveReplyDraft, clearReplyDraft } from "../drafts";
+import { sampleContacts } from "../data/contacts";
+
+type PaneMode = "none" | "reply" | "forward";
 
 interface ThreadDetailProps {
   thread: MailThread;
+  replyRequested: number;
+  forwardRequested: number;
+  onPaneChange: (open: boolean) => void;
 }
 
 function formatFullDate(iso: string): string {
@@ -24,15 +35,33 @@ function formatFullDate(iso: string): string {
   });
 }
 
-export function ThreadDetail({ thread }: ThreadDetailProps) {
+export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneChange }: ThreadDetailProps) {
   const draft = loadReplyDraft(thread.id);
-  const [replying, setReplying] = useState(draft !== null);
+  const [pane, setPane] = useState<PaneMode>(draft !== null ? "reply" : "none");
   const [replyText, setReplyText] = useState(draft?.text ?? "");
+  const [forwardTo, setForwardTo] = useState<Contact[]>([]);
 
-  // Save draft on unmount or thread change
+  // Open reply pane when FAB is pressed
+  useEffect(() => {
+    if (replyRequested > 0) setPane("reply");
+  }, [replyRequested]);
+
+  // Open forward pane when toolbar button is pressed
+  useEffect(() => {
+    if (forwardRequested > 0) setPane("forward");
+  }, [forwardRequested]);
+
+  // Notify parent of pane state
+  useEffect(() => {
+    onPaneChange(pane !== "none");
+  }, [pane, onPaneChange]);
+
+  // Save reply draft on unmount or thread change
   const saveDraft = useCallback(() => {
-    saveReplyDraft(thread.id, { text: replyText });
-  }, [thread.id, replyText]);
+    if (pane === "reply") {
+      saveReplyDraft(thread.id, { text: replyText });
+    }
+  }, [thread.id, replyText, pane]);
 
   useEffect(() => {
     return () => saveDraft();
@@ -42,21 +71,39 @@ export function ThreadDetail({ thread }: ThreadDetailProps) {
   useEffect(() => {
     const d = loadReplyDraft(thread.id);
     setReplyText(d?.text ?? "");
-    setReplying(d !== null);
+    setPane(d !== null ? "reply" : "none");
+    setForwardTo([]);
   }, [thread.id]);
 
-  const handleDiscard = () => {
-    setReplying(false);
+  const handleDiscardReply = () => {
+    setPane("none");
     setReplyText("");
     clearReplyDraft(thread.id);
   };
 
+  const handleDiscardForward = () => {
+    setPane("none");
+    setForwardTo([]);
+  };
+
+  const newest = thread.messages[0];
+  const replyRecipients = new Map<string, string>();
+  replyRecipients.set(newest.from.email, newest.from.name);
+  newest.to.forEach((c) => replyRecipients.set(c.email, c.name));
+
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Reply pane */}
-      <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
-        {replying ? (
+      {pane === "reply" && (
+        <>
+        <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+              <Typography variant="body2" color="text.secondary">To:</Typography>
+              {[...replyRecipients.entries()].map(([email, name]) => (
+                <Chip key={email} label={name} size="small" />
+              ))}
+            </Box>
             <TextField
               placeholder="Write a reply…"
               multiline
@@ -72,19 +119,80 @@ export function ThreadDetail({ thread }: ThreadDetailProps) {
               <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>
                 Send
               </Button>
-              <Button variant="text" color="inherit" startIcon={<DeleteIcon />} onClick={handleDiscard}>
+              <Button variant="text" color="inherit" startIcon={<DeleteIcon />} onClick={handleDiscardReply}>
                 Discard
               </Button>
             </Box>
           </Box>
-        ) : (
-          <Button variant="outlined" startIcon={<ReplyAllIcon />} onClick={() => setReplying(true)}>
-            Write Reply
-          </Button>
-        )}
-      </Box>
+        </Box>
+        <Divider />
+        </>
+      )}
 
-      <Divider />
+      {/* Forward pane */}
+      {pane === "forward" && (
+        <>
+        <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+              <Typography variant="body2" color="text.secondary">To:</Typography>
+              {[...replyRecipients.entries()].map(([email, name]) => (
+                <Chip key={email} label={name} size="small" />
+              ))}
+            </Box>
+            <Autocomplete
+              multiple
+              options={sampleContacts}
+              getOptionLabel={(option) => `${option.name} <${option.email}>`}
+              filterSelectedOptions
+              value={forwardTo}
+              onChange={(_e, value) => setForwardTo(value)}
+              isOptionEqualToValue={(option, value) => option.email === value.email}
+              renderValue={(value, getItemProps) =>
+                (value as Contact[]).map((contact, index) => {
+                  const { key, ...rest } = getItemProps({ index });
+                  return (
+                    <Chip
+                      key={key}
+                      label={contact.name}
+                      size="small"
+                      {...rest}
+                    />
+                  );
+                })
+              }
+              renderOption={(props, option) => {
+                const { key, ...rest } = props;
+                return (
+                  <li key={key} {...rest}>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {option.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.email}
+                      </Typography>
+                    </Box>
+                  </li>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Forward to" placeholder="Add recipients…" size="small" />
+              )}
+            />
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button variant="contained" startIcon={<SendIcon />} disabled={forwardTo.length === 0}>
+                Forward
+              </Button>
+              <Button variant="text" color="inherit" startIcon={<DeleteIcon />} onClick={handleDiscardForward}>
+                Discard
+              </Button>
+            </Box>
+          </Box>
+        </Box>
+        <Divider />
+        </>
+      )}
 
       {/* Messages */}
       <Box sx={{ flexGrow: 1, overflow: "auto", px: { xs: 2, sm: 3 }, py: 2, display: "flex", flexDirection: "column", gap: 2 }}>

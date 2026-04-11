@@ -14,10 +14,12 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import EditIcon from "@mui/icons-material/Edit";
+import ReplyIcon from "@mui/icons-material/Reply";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ForwardIcon from "@mui/icons-material/Forward";
-import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+
+
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import { Sidebar } from "./components/Sidebar";
@@ -36,6 +38,9 @@ export function App() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>("john-inbox");
   const [selectedThread, setSelectedThread] = useState<MailThread | null>(null);
   const [view, setView] = useState<View>("list");
+  const [replyRequested, setReplyRequested] = useState(0);
+  const [forwardRequested, setForwardRequested] = useState(0);
+  const [hasPaneOpen, setHasPaneOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
@@ -157,14 +162,9 @@ export function App() {
           )}
           {view === "thread" && (
             <>
-              <Tooltip title="Mark unread">
-                <IconButton color="inherit" aria-label="mark unread">
-                  <MarkEmailUnreadIcon />
-                </IconButton>
-              </Tooltip>
               <Tooltip title="Forward all">
-                <IconButton color="inherit" aria-label="forward all">
-                  <ForwardIcon />
+                <IconButton color="inherit" aria-label="forward all" onClick={() => setForwardRequested((n) => n + 1)}>
+                  <PersonAddIcon />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Delete thread">
@@ -219,7 +219,7 @@ export function App() {
           />
         )}
         {view === "thread" && selectedThread && (
-          <ThreadDetail thread={selectedThread} />
+          <ThreadDetail thread={selectedThread} replyRequested={replyRequested} forwardRequested={forwardRequested} onPaneChange={setHasPaneOpen} />
         )}
         {view === "list" && (
           <MailList
@@ -231,7 +231,7 @@ export function App() {
           />
         )}
 
-        {view !== "compose" && (
+        {view === "list" && (
           <Fab
             color="primary"
             aria-label="compose"
@@ -239,6 +239,16 @@ export function App() {
             sx={{ position: "fixed", bottom: 24, right: 24 }}
           >
             <EditIcon />
+          </Fab>
+        )}
+        {view === "thread" && !hasPaneOpen && (
+          <Fab
+            color="primary"
+            aria-label="reply"
+            onClick={() => setReplyRequested((n) => n + 1)}
+            sx={{ position: "fixed", bottom: 24, right: 24 }}
+          >
+            <ReplyIcon />
           </Fab>
         )}
       </Box>
