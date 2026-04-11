@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -11,11 +11,34 @@ import SendIcon from "@mui/icons-material/Send";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { sampleContacts } from "../data/contacts";
 import type { Contact } from "../types";
+import { loadComposeDraft, saveComposeDraft, clearComposeDraft } from "../drafts";
 
-export function ComposeScreen() {
-  const [to, setTo] = useState<Contact[]>([]);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+interface ComposeScreenProps {
+  folderId: string;
+}
+
+export function ComposeScreen({ folderId }: ComposeScreenProps) {
+  const draft = loadComposeDraft(folderId);
+  const [to, setTo] = useState<Contact[]>(draft?.to ?? []);
+  const [subject, setSubject] = useState(draft?.subject ?? "");
+  const [body, setBody] = useState(draft?.body ?? "");
+
+  // Save draft on unmount or folder change
+  const saveDraft = useCallback(() => {
+    saveComposeDraft(folderId, { to, subject, body });
+  }, [folderId, to, subject, body]);
+
+  useEffect(() => {
+    return () => saveDraft();
+  }, [saveDraft]);
+
+  // Reset state when switching folders
+  useEffect(() => {
+    const d = loadComposeDraft(folderId);
+    setTo(d?.to ?? []);
+    setSubject(d?.subject ?? "");
+    setBody(d?.body ?? "");
+  }, [folderId]);
 
   const handleSend = () => {
     if (to.length === 0) return;
@@ -25,9 +48,14 @@ export function ComposeScreen() {
       body,
     });
     alert(`Mail sent to ${to.map((c) => c.name).join(", ")}!`);
+    clearComposeDraft(folderId);
+    setTo([]);
+    setSubject("");
+    setBody("");
   };
 
   const handleDiscard = () => {
+    clearComposeDraft(folderId);
     setTo([]);
     setSubject("");
     setBody("");

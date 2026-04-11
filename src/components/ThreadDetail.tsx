@@ -10,7 +10,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/Send";
 import ReplyAllIcon from "@mui/icons-material/ReplyAll";
 import type { MailThread } from "../types";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { loadReplyDraft, saveReplyDraft, clearReplyDraft } from "../drafts";
 
 interface ThreadDetailProps {
   thread: MailThread;
@@ -24,8 +25,31 @@ function formatFullDate(iso: string): string {
 }
 
 export function ThreadDetail({ thread }: ThreadDetailProps) {
-  const [replying, setReplying] = useState(false);
-  const [replyText, setReplyText] = useState("");
+  const draft = loadReplyDraft(thread.id);
+  const [replying, setReplying] = useState(draft !== null);
+  const [replyText, setReplyText] = useState(draft?.text ?? "");
+
+  // Save draft on unmount or thread change
+  const saveDraft = useCallback(() => {
+    saveReplyDraft(thread.id, { text: replyText });
+  }, [thread.id, replyText]);
+
+  useEffect(() => {
+    return () => saveDraft();
+  }, [saveDraft]);
+
+  // Reset state when switching threads
+  useEffect(() => {
+    const d = loadReplyDraft(thread.id);
+    setReplyText(d?.text ?? "");
+    setReplying(d !== null);
+  }, [thread.id]);
+
+  const handleDiscard = () => {
+    setReplying(false);
+    setReplyText("");
+    clearReplyDraft(thread.id);
+  };
 
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -48,7 +72,7 @@ export function ThreadDetail({ thread }: ThreadDetailProps) {
               <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>
                 Send
               </Button>
-              <Button variant="text" color="inherit" startIcon={<DeleteIcon />} onClick={() => { setReplying(false); setReplyText(""); }}>
+              <Button variant="text" color="inherit" startIcon={<DeleteIcon />} onClick={handleDiscard}>
                 Discard
               </Button>
             </Box>
