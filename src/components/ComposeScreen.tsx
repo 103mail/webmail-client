@@ -1,0 +1,118 @@
+import { useState } from "react";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Autocomplete,
+  Chip,
+} from "@mui/material";
+import SendIcon from "@mui/icons-material/Send";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { sampleContacts } from "../data/contacts";
+import type { Contact } from "../types";
+
+export function ComposeScreen() {
+  const [to, setTo] = useState<Contact[]>([]);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+
+  const handleSend = () => {
+    if (to.length === 0) return;
+    console.log("Sending mail:", {
+      to: to.map((c) => c.email),
+      subject,
+      body,
+    });
+    alert(`Mail sent to ${to.map((c) => c.name).join(", ")}!`);
+  };
+
+  const handleDiscard = () => {
+    setTo([]);
+    setSubject("");
+    setBody("");
+  };
+
+  return (
+    <Box sx={{ p: { xs: 2, sm: 3 }, height: "100%", display: "flex", flexDirection: "column" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, flexGrow: 1 }}>
+        <Autocomplete
+          multiple
+          options={sampleContacts}
+          getOptionLabel={(option) => `${option.name} <${option.email}>`}
+          filterSelectedOptions
+          value={to}
+          onChange={(_e, value) => setTo(value)}
+          isOptionEqualToValue={(option, value) => option.email === value.email}
+          renderValue={(value, getItemProps) =>
+            (value as Contact[]).map((contact, index) => {
+              const { key, ...rest } = getItemProps({ index });
+              return (
+                <Chip
+                  key={key}
+                  label={contact.name}
+                  size="small"
+                  {...rest}
+                />
+              );
+            })
+          }
+          renderOption={(props, option) => {
+            const { key, ...rest } = props;
+            return (
+              <li key={key} {...rest}>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {option.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {option.email}
+                  </Typography>
+                </Box>
+              </li>
+            );
+          }}
+          renderInput={(params) => (
+            <TextField {...params} label="To" placeholder="Add recipients…" />
+          )}
+        />
+
+        <TextField
+          label="Subject"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          fullWidth
+        />
+
+        <TextField
+          placeholder="Write your message…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          fullWidth
+          multiline
+          minRows={3}
+          maxRows={8}
+        />
+
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            variant="contained"
+            startIcon={<SendIcon />}
+            onClick={handleSend}
+            disabled={to.length === 0}
+          >
+            Send
+          </Button>
+          <Button
+            variant="text"
+            color="inherit"
+            startIcon={<DeleteIcon />}
+            onClick={handleDiscard}
+          >
+            Discard
+          </Button>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
