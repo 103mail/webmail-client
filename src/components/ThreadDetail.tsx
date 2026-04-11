@@ -2,8 +2,6 @@ import {
   Autocomplete,
   Box,
   Chip,
-  IconButton,
-  Tooltip,
   Typography,
   Divider,
   Button,
@@ -12,8 +10,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/Send";
-import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
+
 import type { Contact, MailThread } from "../types";
 import { useState, useEffect, useCallback } from "react";
 import { loadReplyDraft, saveReplyDraft, clearReplyDraft } from "../drafts";

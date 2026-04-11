@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Typography,
@@ -23,10 +23,13 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   const [to, setTo] = useState<Contact[]>(draft?.to ?? []);
   const [subject, setSubject] = useState(draft?.subject ?? "");
   const [body, setBody] = useState(draft?.body ?? "");
+  const discardedRef = useRef(false);
 
   // Save draft on unmount or folder change
   const saveDraft = useCallback(() => {
-    saveComposeDraft(folderId, { to, subject, body });
+    if (!discardedRef.current) {
+      saveComposeDraft(folderId, { to, subject, body });
+    }
   }, [folderId, to, subject, body]);
 
   useEffect(() => {
@@ -56,6 +59,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   };
 
   const handleDiscard = () => {
+    discardedRef.current = true;
     clearComposeDraft(folderId);
     onDiscard();
   };
