@@ -1,4 +1,6 @@
 import {
+  Alert,
+  IconButton,
   List,
   ListItem,
   ListItemButton,
@@ -7,12 +9,15 @@ import {
   Box,
   Chip,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import type { MailThread } from "../types";
 
 interface MailListProps {
   threads: MailThread[];
   onSelect: (thread: MailThread) => void;
   selectedId: string | null;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
 function formatDate(iso: string): string {
@@ -24,18 +29,34 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-export function MailList({ threads, onSelect, selectedId }: MailListProps) {
-  if (threads.length === 0) {
-    return (
+export function MailList({ threads, onSelect, selectedId, searchQuery = "", onClearSearch }: MailListProps) {
+  const q = searchQuery.toLowerCase();
+  const filtered = q
+    ? threads.filter((t) => t.subject.toLowerCase().includes(q))
+    : threads;
+
+  return (
+    <>
+    {q && (
+      <Alert
+        severity="info"
+        sx={{ borderRadius: 0 }}
+        action={
+          <IconButton size="small" color="inherit" onClick={onClearSearch} aria-label="clear filter">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
+      >
+        Showing results for &lsquo;{searchQuery}&rsquo;
+      </Alert>
+    )}
+    {filtered.length === 0 ? (
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography color="text.secondary">No messages</Typography>
       </Box>
-    );
-  }
-
-  return (
+    ) : (
     <List disablePadding>
-      {threads.map((thread) => {
+      {filtered.map((thread) => {
         const newest = thread.messages[0];
         const participants = [
           ...new Map(
@@ -89,5 +110,7 @@ export function MailList({ threads, onSelect, selectedId }: MailListProps) {
         );
       })}
     </List>
+    )}
+    </>
   );
 }

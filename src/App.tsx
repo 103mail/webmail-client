@@ -5,6 +5,7 @@ import {
   Drawer,
   Fab,
   IconButton,
+  InputBase,
   Toolbar,
   Tooltip,
   Typography,
@@ -17,6 +18,8 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ForwardIcon from "@mui/icons-material/Forward";
 import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 import { Sidebar } from "./components/Sidebar";
 import { ComposeScreen } from "./components/ComposeScreen";
 import { MailList } from "./components/MailList";
@@ -33,6 +36,9 @@ export function App() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>("john-inbox");
   const [selectedThread, setSelectedThread] = useState<MailThread | null>(null);
   const [view, setView] = useState<View>("list");
+  const [searching, setSearching] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -102,9 +108,53 @@ export function App() {
               </IconButton>
             )
           )}
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
-            {title}
-          </Typography>
+          {view === "list" && searching ? (
+            <InputBase
+              placeholder="Search…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchInput.trim()) {
+                  setActiveFilter(searchInput.trim());
+                  setSearching(false);
+                } else if (e.key === "Escape") {
+                  setSearching(false);
+                  setSearchInput("");
+                }
+              }}
+              autoFocus
+              sx={{
+                flexGrow: 1,
+                color: "inherit",
+                "& .MuiInputBase-input": {
+                  py: 0.5,
+                },
+              }}
+            />
+          ) : (
+            <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+              {title}
+            </Typography>
+          )}
+          {view === "list" && (
+            searching ? (
+              <IconButton
+                color="inherit"
+                aria-label="close search"
+                onClick={() => { setSearching(false); setSearchInput(""); }}
+              >
+                <CloseIcon />
+              </IconButton>
+            ) : (
+              <IconButton
+                color="inherit"
+                aria-label="search"
+                onClick={() => setSearching(true)}
+              >
+                <SearchIcon />
+              </IconButton>
+            )
+          )}
           {view === "thread" && (
             <>
               <Tooltip title="Mark unread">
@@ -171,6 +221,8 @@ export function App() {
             threads={folderThreads}
             onSelect={handleSelectThread}
             selectedId={selectedThread?.id ?? null}
+            searchQuery={activeFilter}
+            onClearSearch={() => { setActiveFilter(""); setSearchInput(""); }}
           />
         )}
 
