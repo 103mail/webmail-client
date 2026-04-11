@@ -1,9 +1,12 @@
+import { useRef, useCallback } from "react";
 import {
   Alert,
+  Checkbox,
   IconButton,
   List,
   ListItem,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
   Typography,
   Box,
@@ -18,6 +21,8 @@ interface MailListProps {
   selectedId: string | null;
   searchQuery?: string;
   onClearSearch?: () => void;
+  checkedIds: Set<string>;
+  onToggleChecked: (threadId: string) => void;
 }
 
 function formatDate(iso: string): string {
@@ -29,11 +34,41 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-export function MailList({ threads, onSelect, selectedId, searchQuery = "", onClearSearch }: MailListProps) {
+const LONG_PRESS_MS = 500;
+
+export function MailList({ threads, onSelect, selectedId, searchQuery = "", onClearSearch, checkedIds, onToggleChecked }: MailListProps) {
   const q = searchQuery.toLowerCase();
   const filtered = q
     ? threads.filter((t) => t.subject.toLowerCase().includes(q))
     : threads;
+
+  const selectionMode = checkedIds.size > 0;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressedRef = useRef(false);
+
+  const handlePointerDown = useCallback((threadId: string) => {
+    longPressedRef.current = false;
+    timerRef.current = setTimeout(() => {
+      longPressedRef.current = true;
+      onToggleChecked(threadId);
+    }, LONG_PRESS_MS);
+  }, [onToggleChecked]);
+
+  const handlePointerUp = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const handleClick = useCallback((thread: MailThread) => {
+    if (longPressedRef.current) return;
+    if (selectionMode) {
+      onToggleChecked(thread.id);
+    } else {
+      onSelect(thread);
+    }
+  }, [selectionMode, onToggleChecked, onSelect]);
 
   return (
     <>
@@ -64,14 +99,29 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
           ).values(),
         ];
         const weight = thread.read ? 400 : 700;
+        const checked = checkedIds.has(thread.id);
 
         return (
           <ListItem key={thread.id} disablePadding divider>
             <ListItemButton
               selected={selectedId === thread.id}
-              onClick={() => onSelect(thread)}
-              sx={{ alignItems: "flex-start", py: 1.5, px: 3 }}
+              onClick={() => handleClick(thread)}
+              onPointerDown={() => handlePointerDown(thread.id)}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              sx={{ alignItems: "flex-start", py: 1.5, px: 3, userSelect: "none" }}
             >
+              {selectionMode && (
+                <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+                  <Checkbox
+                    edge="start"
+                    checked={checked}
+                    tabIndex={-1}
+                    disableRipple
+                    size="small"
+                  />
+                </ListItemIcon>
+              )}
               <ListItemText
                 primary={
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 2 }}>

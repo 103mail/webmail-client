@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   AppBar,
   Box,
@@ -18,10 +18,9 @@ import ReplyIcon from "@mui/icons-material/Reply";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-
-
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
+import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
 import { Sidebar } from "./components/Sidebar";
 import { ComposeScreen } from "./components/ComposeScreen";
 import { MailList } from "./components/MailList";
@@ -44,8 +43,11 @@ export function App() {
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+
+  const selectionMode = checkedIds.size > 0;
 
   const folderThreads = useMemo(
     () => sampleThreads.filter((t) => t.folderId === selectedFolder),
@@ -55,6 +57,7 @@ export function App() {
   const handleSelectFolder = (folderId: string) => {
     setSelectedFolder(folderId);
     setSelectedThread(null);
+    setCheckedIds(new Set());
     setView("list");
     if (!isDesktop) setMobileOpen(false);
   };
@@ -68,6 +71,20 @@ export function App() {
     setSelectedThread(null);
     setView("list");
   };
+
+  const handleToggleChecked = useCallback((threadId: string) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(threadId)) {
+        next.delete(threadId);
+      } else {
+        next.add(threadId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = () => setCheckedIds(new Set());
 
   const title =
     view === "compose"
@@ -90,88 +107,118 @@ export function App() {
         sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
       >
         <Toolbar>
-          {view === "thread" ? (
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={handleBackToList}
-              sx={{ mr: 2 }}
-              aria-label="back to list"
-            >
-              <ArrowBackIcon />
-            </IconButton>
-          ) : (
-            !isDesktop && (
+          {/* Selection mode toolbar */}
+          {view === "list" && selectionMode ? (
+            <>
               <IconButton
                 color="inherit"
                 edge="start"
-                onClick={() => setMobileOpen((o) => !o)}
+                onClick={handleClearSelection}
                 sx={{ mr: 2 }}
-                aria-label="open drawer"
-              >
-                <MenuIcon />
-              </IconButton>
-            )
-          )}
-          {view === "list" && searching ? (
-            <InputBase
-              placeholder="Search…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && searchInput.trim()) {
-                  setActiveFilter(searchInput.trim());
-                  setSearching(false);
-                } else if (e.key === "Escape") {
-                  setSearching(false);
-                  setSearchInput("");
-                }
-              }}
-              autoFocus
-              sx={{
-                flexGrow: 1,
-                color: "inherit",
-                "& .MuiInputBase-input": {
-                  py: 0.5,
-                },
-              }}
-            />
-          ) : (
-            <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
-              {title}
-            </Typography>
-          )}
-          {view === "list" && (
-            searching ? (
-              <IconButton
-                color="inherit"
-                aria-label="close search"
-                onClick={() => { setSearching(false); setSearchInput(""); }}
+                aria-label="clear selection"
               >
                 <CloseIcon />
               </IconButton>
-            ) : (
-              <IconButton
-                color="inherit"
-                aria-label="search"
-                onClick={() => setSearching(true)}
-              >
-                <SearchIcon />
-              </IconButton>
-            )
-          )}
-          {view === "thread" && (
-            <>
-              <Tooltip title="Forward all">
-                <IconButton color="inherit" aria-label="forward all" onClick={() => setForwardRequested((n) => n + 1)}>
-                  <PersonAddIcon />
+              <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+                {checkedIds.size} thread{checkedIds.size !== 1 ? "s" : ""} selected
+              </Typography>
+              <Tooltip title="Move">
+                <IconButton color="inherit" aria-label="move threads">
+                  <DriveFileMoveIcon />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Delete thread">
-                <IconButton color="inherit" aria-label="delete thread">
+              <Tooltip title="Delete">
+                <IconButton color="inherit" aria-label="delete threads">
                   <DeleteIcon />
                 </IconButton>
               </Tooltip>
+            </>
+          ) : (
+            <>
+              {view === "thread" ? (
+                <IconButton
+                  color="inherit"
+                  edge="start"
+                  onClick={handleBackToList}
+                  sx={{ mr: 2 }}
+                  aria-label="back to list"
+                >
+                  <ArrowBackIcon />
+                </IconButton>
+              ) : (
+                !isDesktop && (
+                  <IconButton
+                    color="inherit"
+                    edge="start"
+                    onClick={() => setMobileOpen((o) => !o)}
+                    sx={{ mr: 2 }}
+                    aria-label="open drawer"
+                  >
+                    <MenuIcon />
+                  </IconButton>
+                )
+              )}
+              {view === "list" && searching ? (
+                <InputBase
+                  placeholder="Search…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && searchInput.trim()) {
+                      setActiveFilter(searchInput.trim());
+                      setSearching(false);
+                    } else if (e.key === "Escape") {
+                      setSearching(false);
+                      setSearchInput("");
+                    }
+                  }}
+                  autoFocus
+                  sx={{
+                    flexGrow: 1,
+                    color: "inherit",
+                    "& .MuiInputBase-input": {
+                      py: 0.5,
+                    },
+                  }}
+                />
+              ) : (
+                <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+                  {title}
+                </Typography>
+              )}
+              {view === "list" && (
+                searching ? (
+                  <IconButton
+                    color="inherit"
+                    aria-label="close search"
+                    onClick={() => { setSearching(false); setSearchInput(""); }}
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                ) : (
+                  <IconButton
+                    color="inherit"
+                    aria-label="search"
+                    onClick={() => setSearching(true)}
+                  >
+                    <SearchIcon />
+                  </IconButton>
+                )
+              )}
+              {view === "thread" && (
+                <>
+                  <Tooltip title="Forward all">
+                    <IconButton color="inherit" aria-label="forward all" onClick={() => setForwardRequested((n) => n + 1)}>
+                      <PersonAddIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete thread">
+                    <IconButton color="inherit" aria-label="delete thread">
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
             </>
           )}
         </Toolbar>
@@ -228,10 +275,12 @@ export function App() {
             selectedId={selectedThread?.id ?? null}
             searchQuery={activeFilter}
             onClearSearch={() => { setActiveFilter(""); setSearchInput(""); }}
+            checkedIds={checkedIds}
+            onToggleChecked={handleToggleChecked}
           />
         )}
 
-        {view === "list" && (
+        {view === "list" && !selectionMode && (
           <Fab
             color="primary"
             aria-label="compose"
