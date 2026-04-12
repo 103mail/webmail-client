@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   AppBar,
   Box,
@@ -68,12 +68,33 @@ export function App() {
   const handleSelectThread = (thread: MailThread) => {
     setSelectedThread(thread);
     setView("thread");
+    history.pushState({ view: "thread", threadId: thread.id }, "");
   };
 
   const handleBackToList = () => {
-    setSelectedThread(null);
-    setView("list");
+    history.back();
   };
+
+  // Push history state when entering compose
+  const handleOpenCompose = () => {
+    setView("compose");
+    history.pushState({ view: "compose" }, "");
+  };
+
+  // Handle browser back button
+  useEffect(() => {
+    const onPopState = () => {
+      setView((currentView) => {
+        if (currentView === "compose" || currentView === "thread") {
+          setSelectedThread(null);
+          return "list";
+        }
+        return currentView;
+      });
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const handleToggleChecked = useCallback((threadId: string) => {
     setCheckedIds((prev) => {
@@ -296,7 +317,7 @@ export function App() {
           <Fab
             color="primary"
             aria-label="compose"
-            onClick={() => setView("compose")}
+            onClick={handleOpenCompose}
             sx={{ position: "fixed", bottom: 24, right: 24 }}
           >
             <EditIcon />
