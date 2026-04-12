@@ -30,15 +30,16 @@ export function SectionNav({ section, onChange, isDesktop }: SectionNavProps) {
   if (isDesktop) {
     return (
       <>
-      <Box sx={{ width: 56, flexShrink: 0 }} />
+      <Box sx={{ width: 60, flexShrink: 0 }} />
       <Box
         sx={{
-          width: 56,
+          width: 60,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          pt: "76px",
-          gap: 1,
+          pl: "2px",
+          pt: "72px",
+          gap: 0.5,
           borderRight: "1px solid",
           borderColor: "divider",
           bgcolor: "background.paper",
@@ -52,6 +53,7 @@ export function SectionNav({ section, onChange, isDesktop }: SectionNavProps) {
         {sections.map((s) => (
           <Tooltip key={s.value} title={s.label} placement="right">
             <IconButton
+              size="large"
               onClick={() => onChange(s.value)}
               color={section === s.value ? "primary" : "default"}
               aria-label={s.label}
@@ -64,12 +66,12 @@ export function SectionNav({ section, onChange, isDesktop }: SectionNavProps) {
         <Box sx={{ flexGrow: 1 }} />
 
         <Tooltip title="Settings" placement="right">
-          <IconButton aria-label="settings">
+          <IconButton size="large" aria-label="settings">
             <SettingsIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title="Account" placement="right">
-          <IconButton aria-label="account" sx={{ mb: 2 }}>
+          <IconButton size="large" aria-label="account" sx={{ mb: 1 }}>
             <AccountCircleIcon />
           </IconButton>
         </Tooltip>

@@ -35,7 +35,7 @@ import { accounts } from "./data/accounts";
 import type { MailThread } from "./types";
 
 const DRAWER_WIDTH = 280;
-const RAIL_WIDTH = 56;
+const RAIL_WIDTH = 60;
 const THREAD_LIST_WIDTH = 360;
 
 type MailView = "list" | "thread" | "compose";
@@ -299,7 +299,7 @@ export function App() {
                 </IconButton>
               )}
               {showLogo && (
-                <Box component="img" src="/mail.svg" alt="logo" sx={{ height: 32, ml: -2, mr: 1 }} />
+                <Box component="img" src="/mail.svg" alt="logo" sx={{ height: 32, ml: -1.6, mr: 0.9 }} />
               )}
 
               {/* Title / search */}
