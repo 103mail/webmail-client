@@ -69,19 +69,32 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, flexGrow: 1 }}>
         <Autocomplete
           multiple
+          freeSolo
           options={sampleContacts}
-          getOptionLabel={(option) => `${option.name} <${option.email}>`}
+          getOptionLabel={(option) =>
+            typeof option === "string" ? option : `${option.name} <${option.email}>`
+          }
           filterSelectedOptions
           value={to}
-          onChange={(_e, value) => setTo(value)}
-          isOptionEqualToValue={(option, value) => option.email === value.email}
+          onChange={(_e, value) => {
+            setTo(
+              value.map((v) =>
+                typeof v === "string" ? { name: v, email: v } : v
+              )
+            );
+          }}
+          isOptionEqualToValue={(option, value) =>
+            typeof option === "string" || typeof value === "string"
+              ? option === value
+              : option.email === value.email
+          }
           renderValue={(value, getItemProps) =>
             (value as Contact[]).map((contact, index) => {
               const { key, ...rest } = getItemProps({ index });
               return (
                 <Chip
                   key={key}
-                  label={contact.name}
+                  label={contact.name === contact.email ? contact.email : contact.name}
                   size="small"
                   {...rest}
                 />

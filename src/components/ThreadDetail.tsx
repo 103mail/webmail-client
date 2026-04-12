@@ -139,19 +139,32 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
             </Box>
             <Autocomplete
               multiple
+              freeSolo
               options={sampleContacts}
-              getOptionLabel={(option) => `${option.name} <${option.email}>`}
+              getOptionLabel={(option) =>
+                typeof option === "string" ? option : `${option.name} <${option.email}>`
+              }
               filterSelectedOptions
               value={forwardTo}
-              onChange={(_e, value) => setForwardTo(value)}
-              isOptionEqualToValue={(option, value) => option.email === value.email}
+              onChange={(_e, value) => {
+                setForwardTo(
+                  value.map((v) =>
+                    typeof v === "string" ? { name: v, email: v } : v
+                  )
+                );
+              }}
+              isOptionEqualToValue={(option, value) =>
+                typeof option === "string" || typeof value === "string"
+                  ? option === value
+                  : option.email === value.email
+              }
               renderValue={(value, getItemProps) =>
                 (value as Contact[]).map((contact, index) => {
                   const { key, ...rest } = getItemProps({ index });
                   return (
                     <Chip
                       key={key}
-                      label={contact.name}
+                      label={contact.name === contact.email ? contact.email : contact.name}
                       size="small"
                       {...rest}
                     />
