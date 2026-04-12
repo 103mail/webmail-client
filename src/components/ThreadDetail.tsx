@@ -134,7 +134,6 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
             </Box>
           </Box>
         </Box>
-        <Divider />
         </>
       )}
 
@@ -212,12 +211,12 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
             </Box>
           </Box>
         </Box>
-        <Divider />
         </>
       )}
 
-      {/* Messages */}
+      {/* Subject + Messages */}
       <Box sx={{ flexGrow: 1, overflow: "auto", px: { xs: 2, sm: 3 }, py: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Typography variant="h6">{thread.subject}</Typography>
         {thread.messages.map((msg) => (
           <Paper key={msg.id} variant="outlined" sx={{ p: 2 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 0.5 }}>

@@ -110,6 +110,8 @@ export function App() {
   };
 
   const handleBackToList = () => {
+    setSelectedThread(null);
+    setMailView("list");
     history.back();
   };
 
@@ -160,8 +162,8 @@ export function App() {
         ? "Chat"
         : mailView === "compose" && !multiPane
           ? "Compose"
-          : mailView === "thread" && selectedThread && !multiPane
-            ? selectedThread.subject
+          : mailView === "thread" && !multiPane
+            ? ""
             : "Inbox";
 
   const sidebarDesktop = (
