@@ -21,23 +21,29 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
+import { SectionNav } from "./components/SectionNav";
+import type { Section } from "./components/SectionNav";
 import { Sidebar } from "./components/Sidebar";
 import { ComposeScreen } from "./components/ComposeScreen";
 import { MailList } from "./components/MailList";
 import { ThreadDetail } from "./components/ThreadDetail";
+import { CalendarView } from "./components/CalendarView";
+import { ChatView } from "./components/ChatView";
 import { sampleThreads } from "./data/messages";
 import { accounts } from "./data/accounts";
 import type { MailThread } from "./types";
 
 const DRAWER_WIDTH = 280;
+const RAIL_WIDTH = 56;
 
-type View = "list" | "thread" | "compose";
+type MailView = "list" | "thread" | "compose";
 
 export function App() {
+  const [section, setSection] = useState<Section>("mail");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<string | null>("john-inbox");
   const [selectedThread, setSelectedThread] = useState<MailThread | null>(null);
-  const [view, setView] = useState<View>("list");
+  const [mailView, setMailView] = useState<MailView>("list");
   const [replyRequested, setReplyRequested] = useState(0);
   const [forwardRequested, setForwardRequested] = useState(0);
   const [hasPaneOpen, setHasPaneOpen] = useState(false);
@@ -61,35 +67,33 @@ export function App() {
     setSelectedFolder(folderId);
     setSelectedThread(null);
     setCheckedIds(new Set());
-    setView("list");
+    setMailView("list");
     if (!isDesktop) setMobileOpen(false);
   };
 
   const handleSelectThread = (thread: MailThread) => {
     setSelectedThread(thread);
-    setView("thread");
-    history.pushState({ view: "thread", threadId: thread.id }, "");
+    setMailView("thread");
+    history.pushState({ mailView: "thread", threadId: thread.id }, "");
   };
 
   const handleBackToList = () => {
     history.back();
   };
 
-  // Push history state when entering compose
   const handleOpenCompose = () => {
-    setView("compose");
-    history.pushState({ view: "compose" }, "");
+    setMailView("compose");
+    history.pushState({ mailView: "compose" }, "");
   };
 
-  // Handle browser back button
   useEffect(() => {
     const onPopState = () => {
-      setView((currentView) => {
-        if (currentView === "compose" || currentView === "thread") {
+      setMailView((current) => {
+        if (current === "compose" || current === "thread") {
           setSelectedThread(null);
           return "list";
         }
-        return currentView;
+        return current;
       });
     };
     window.addEventListener("popstate", onPopState);
@@ -110,12 +114,21 @@ export function App() {
 
   const handleClearSelection = () => setCheckedIds(new Set());
 
+  const handleSectionChange = (s: Section) => {
+    setSection(s);
+    setCheckedIds(new Set());
+  };
+
   const title =
-    view === "compose"
-      ? "Compose"
-      : view === "thread" && selectedThread
-        ? selectedThread.subject
-        : "Inbox";
+    section === "calendar"
+      ? "Calendar"
+      : section === "chat"
+        ? "Chat"
+        : mailView === "compose"
+          ? "Compose"
+          : mailView === "thread" && selectedThread
+            ? selectedThread.subject
+            : "Inbox";
 
   const sidebar = (
     <Sidebar
@@ -124,15 +137,17 @@ export function App() {
     />
   );
 
+  const showMailToolbar = section === "mail";
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <AppBar
         position="fixed"
-        sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}
+        sx={{ zIndex: (t) => t.zIndex.drawer + 2 }}
       >
         <Toolbar>
           {/* Selection mode toolbar */}
-          {view === "list" && selectionMode ? (
+          {showMailToolbar && mailView === "list" && selectionMode ? (
             <>
               <IconButton
                 color="inherit"
@@ -161,7 +176,7 @@ export function App() {
             </>
           ) : (
             <>
-              {view === "thread" ? (
+              {showMailToolbar && mailView === "thread" ? (
                 <IconButton
                   color="inherit"
                   edge="start"
@@ -172,7 +187,7 @@ export function App() {
                   <ArrowBackIcon />
                 </IconButton>
               ) : (
-                !isDesktop && (
+                !isDesktop && section === "mail" && (
                   <IconButton
                     color="inherit"
                     edge="start"
@@ -184,7 +199,7 @@ export function App() {
                   </IconButton>
                 )
               )}
-              {view === "list" && searching ? (
+              {showMailToolbar && mailView === "list" && searching ? (
                 <InputBase
                   placeholder="Search…"
                   value={searchInput}
@@ -212,7 +227,7 @@ export function App() {
                   {title}
                 </Typography>
               )}
-              {view === "list" && (
+              {showMailToolbar && mailView === "list" && (
                 searching ? (
                   <IconButton
                     color="inherit"
@@ -231,7 +246,7 @@ export function App() {
                   </IconButton>
                 )
               )}
-              {view === "thread" && (
+              {showMailToolbar && mailView === "thread" && (
                 <>
                   <Tooltip title="Forward all">
                     <IconButton color="inherit" aria-label="forward all" onClick={() => setForwardRequested((n) => n + 1)}>
@@ -257,7 +272,13 @@ export function App() {
         </Toolbar>
       </AppBar>
 
-      {!isDesktop && (
+      {/* Section nav — desktop icon rail */}
+      {isDesktop && (
+        <SectionNav section={section} onChange={handleSectionChange} isDesktop />
+      )}
+
+      {/* Mail folder drawer — mobile */}
+      {!isDesktop && section === "mail" && (
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -269,13 +290,18 @@ export function App() {
         </Drawer>
       )}
 
-      {isDesktop && (
+      {/* Mail folder drawer — desktop */}
+      {isDesktop && section === "mail" && (
         <Drawer
           variant="permanent"
           sx={{
             width: DRAWER_WIDTH,
             flexShrink: 0,
-            "& .MuiDrawer-paper": { width: DRAWER_WIDTH, boxSizing: "border-box" },
+            "& .MuiDrawer-paper": {
+              width: DRAWER_WIDTH,
+              boxSizing: "border-box",
+              ml: `${RAIL_WIDTH}px`,
+            },
           }}
           open
         >
@@ -289,51 +315,65 @@ export function App() {
           flexGrow: 1,
           bgcolor: "background.paper",
           pt: "64px",
+          pb: isDesktop ? 0 : "56px",
           position: "relative",
+          minHeight: "100vh",
         }}
       >
-        {view === "compose" && selectedFolder && (
-          <ComposeScreen
-            folderId={selectedFolder}
-            onDiscard={() => setView("list")}
-          />
-        )}
-        {view === "thread" && selectedThread && (
-          <ThreadDetail thread={selectedThread} replyRequested={replyRequested} forwardRequested={forwardRequested} onPaneChange={setHasPaneOpen} />
-        )}
-        {view === "list" && (
-          <MailList
-            threads={folderThreads}
-            onSelect={handleSelectThread}
-            selectedId={selectedThread?.id ?? null}
-            searchQuery={activeFilter}
-            onClearSearch={() => { setActiveFilter(""); setSearchInput(""); }}
-            checkedIds={checkedIds}
-            onToggleChecked={handleToggleChecked}
-          />
+        {section === "mail" && (
+          <>
+            {mailView === "compose" && selectedFolder && (
+              <ComposeScreen
+                folderId={selectedFolder}
+                onDiscard={() => setMailView("list")}
+              />
+            )}
+            {mailView === "thread" && selectedThread && (
+              <ThreadDetail thread={selectedThread} replyRequested={replyRequested} forwardRequested={forwardRequested} onPaneChange={setHasPaneOpen} />
+            )}
+            {mailView === "list" && (
+              <MailList
+                threads={folderThreads}
+                onSelect={handleSelectThread}
+                selectedId={selectedThread?.id ?? null}
+                searchQuery={activeFilter}
+                onClearSearch={() => { setActiveFilter(""); setSearchInput(""); }}
+                checkedIds={checkedIds}
+                onToggleChecked={handleToggleChecked}
+              />
+            )}
+
+            {mailView === "list" && !selectionMode && (
+              <Fab
+                color="primary"
+                aria-label="compose"
+                onClick={handleOpenCompose}
+                sx={{ position: "fixed", bottom: isDesktop ? 24 : 80, right: 24 }}
+              >
+                <EditIcon />
+              </Fab>
+            )}
+            {mailView === "thread" && !hasPaneOpen && (
+              <Fab
+                color="primary"
+                aria-label="reply"
+                onClick={() => setReplyRequested((n) => n + 1)}
+                sx={{ position: "fixed", bottom: isDesktop ? 24 : 80, right: 24 }}
+              >
+                <ReplyIcon />
+              </Fab>
+            )}
+          </>
         )}
 
-        {view === "list" && !selectionMode && (
-          <Fab
-            color="primary"
-            aria-label="compose"
-            onClick={handleOpenCompose}
-            sx={{ position: "fixed", bottom: 24, right: 24 }}
-          >
-            <EditIcon />
-          </Fab>
-        )}
-        {view === "thread" && !hasPaneOpen && (
-          <Fab
-            color="primary"
-            aria-label="reply"
-            onClick={() => setReplyRequested((n) => n + 1)}
-            sx={{ position: "fixed", bottom: 24, right: 24 }}
-          >
-            <ReplyIcon />
-          </Fab>
-        )}
+        {section === "calendar" && <CalendarView />}
+        {section === "chat" && <ChatView />}
       </Box>
+
+      {/* Section nav — mobile bottom bar */}
+      {!isDesktop && (
+        <SectionNav section={section} onChange={handleSectionChange} isDesktop={false} />
+      )}
     </Box>
   );
 }
