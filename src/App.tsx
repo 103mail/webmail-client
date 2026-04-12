@@ -26,6 +26,7 @@ import { ComposeScreen } from "./components/ComposeScreen";
 import { MailList } from "./components/MailList";
 import { ThreadDetail } from "./components/ThreadDetail";
 import { sampleThreads } from "./data/messages";
+import { accounts } from "./data/accounts";
 import type { MailThread } from "./types";
 
 const DRAWER_WIDTH = 280;
@@ -48,6 +49,8 @@ export function App() {
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
   const selectionMode = checkedIds.size > 0;
+  const currentAccount = accounts.find((a) => a.folders.some((f) => f.id === selectedFolder));
+  const canMove = (currentAccount?.folders.length ?? 0) > 1;
 
   const folderThreads = useMemo(
     () => sampleThreads.filter((t) => t.folderId === selectedFolder),
@@ -122,11 +125,13 @@ export function App() {
               <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
                 {checkedIds.size} thread{checkedIds.size !== 1 ? "s" : ""} selected
               </Typography>
-              <Tooltip title="Move">
-                <IconButton color="inherit" aria-label="move threads">
-                  <DriveFileMoveIcon />
-                </IconButton>
-              </Tooltip>
+              {canMove && (
+                <Tooltip title="Move">
+                  <IconButton color="inherit" aria-label="move threads">
+                    <DriveFileMoveIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
               <Tooltip title="Delete">
                 <IconButton color="inherit" aria-label="delete threads">
                   <DeleteIcon />
@@ -212,6 +217,13 @@ export function App() {
                       <PersonAddIcon />
                     </IconButton>
                   </Tooltip>
+                  {canMove && (
+                    <Tooltip title="Move to folder">
+                      <IconButton color="inherit" aria-label="move to folder">
+                        <DriveFileMoveIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Tooltip title="Delete thread">
                     <IconButton color="inherit" aria-label="delete thread">
                       <DeleteIcon />
