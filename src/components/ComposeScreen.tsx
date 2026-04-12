@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
+  Alert,
   Box,
   Typography,
   TextField,
@@ -9,6 +10,7 @@ import {
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { FileAttachments } from "./FileAttachments";
 import { sampleContacts } from "../data/contacts";
 import type { Contact } from "../types";
 import { loadComposeDraft, saveComposeDraft, clearComposeDraft } from "../drafts";
@@ -23,9 +25,9 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   const [to, setTo] = useState<Contact[]>(draft?.to ?? []);
   const [subject, setSubject] = useState(draft?.subject ?? "");
   const [body, setBody] = useState(draft?.body ?? "");
+  const [attachments, setAttachments] = useState<File[]>([]);
   const discardedRef = useRef(false);
 
-  // Save draft on unmount or folder change
   const saveDraft = useCallback(() => {
     if (!discardedRef.current) {
       saveComposeDraft(folderId, { to, subject, body });
@@ -36,12 +38,12 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
     return () => saveDraft();
   }, [saveDraft]);
 
-  // Reset state when switching folders
   useEffect(() => {
     const d = loadComposeDraft(folderId);
     setTo(d?.to ?? []);
     setSubject(d?.subject ?? "");
     setBody(d?.body ?? "");
+    setAttachments([]);
   }, [folderId]);
 
   const handleSend = () => {
@@ -127,15 +129,21 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           fullWidth
         />
 
-        <TextField
-          placeholder="Write your message…"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          fullWidth
-          multiline
-          minRows={3}
-
-        />
+        {/attach/i.test(body) && attachments.length === 0 && (
+          <Alert severity="info">
+            It looks like you mentioned an attachment but haven't attached any files.
+          </Alert>
+        )}
+        <FileAttachments files={attachments} onChange={setAttachments}>
+          <TextField
+            placeholder="Write your message…"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            fullWidth
+            multiline
+            minRows={3}
+          />
+        </FileAttachments>
 
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button

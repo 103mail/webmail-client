@@ -1,4 +1,5 @@
 import {
+  Alert,
   Autocomplete,
   Box,
   Chip,
@@ -10,6 +11,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/Send";
+import { FileAttachments } from "./FileAttachments";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -49,6 +51,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
   const [pane, setPane] = useState<PaneMode>(draft !== null ? "reply" : "none");
   const [replyText, setReplyText] = useState(draft?.text ?? "");
   const [forwardTo, setForwardTo] = useState<Contact[]>([]);
+  const [replyAttachments, setReplyAttachments] = useState<File[]>([]);
 
   // Open reply pane when FAB is pressed
   useEffect(() => {
@@ -78,6 +81,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
   useEffect(() => {
     const d = loadReplyDraft(thread.id);
     setReplyText(d?.text ?? "");
+    setReplyAttachments([]);
     setPane(d !== null ? "reply" : "none");
     setForwardTo([]);
   }, [thread.id]);
@@ -85,6 +89,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
   const handleDiscardReply = () => {
     setPane("none");
     setReplyText("");
+    setReplyAttachments([]);
     clearReplyDraft(thread.id);
   };
 
@@ -113,17 +118,23 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                 <Chip key={email} label={name} size="small" />
               ))}
             </Box>
-            <TextField
-              placeholder="Write a reply…"
-              multiline
-              minRows={3}
-
-              fullWidth
-              size="small"
-              autoFocus
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-            />
+            {/attach/i.test(replyText) && replyAttachments.length === 0 && (
+              <Alert severity="info">
+                It looks like you mentioned an attachment but haven't attached any files.
+              </Alert>
+            )}
+            <FileAttachments files={replyAttachments} onChange={setReplyAttachments}>
+              <TextField
+                placeholder="Write a reply…"
+                multiline
+                minRows={3}
+                fullWidth
+                size="small"
+                autoFocus
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+              />
+            </FileAttachments>
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
               <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>
                 Send
