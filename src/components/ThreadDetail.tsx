@@ -245,8 +245,8 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                     icon={attachmentIcon(att.type)}
                     label={`${att.name} (${att.size})`}
                     variant="outlined"
-                    size="small"
                     clickable
+                    sx={{ borderRadius: 1 }}
                   />
                 ))}
               </Box>
