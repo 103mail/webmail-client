@@ -21,6 +21,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
+import MailOutlineIcon from "@mui/icons-material/MailOutlined";
 import { SectionNav } from "./components/SectionNav";
 import type { Section } from "./components/SectionNav";
 import { Sidebar } from "./components/Sidebar";
@@ -35,8 +36,10 @@ import type { MailThread } from "./types";
 
 const DRAWER_WIDTH = 280;
 const RAIL_WIDTH = 56;
+const THREAD_LIST_WIDTH = 360;
 
 type MailView = "list" | "thread" | "compose";
+type Layout = "mobile" | "medium" | "large";
 
 export function App() {
   const [section, setSection] = useState<Section>("mail");
@@ -52,8 +55,11 @@ export function App() {
   const [activeFilter, setActiveFilter] = useState("");
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+  const isMd = useMediaQuery(theme.breakpoints.up("md"));
+  const isXl = useMediaQuery(theme.breakpoints.up("xl"));
 
+  const layout: Layout = isXl ? "large" : isMd ? "medium" : "mobile";
+  const multiPane = layout !== "mobile";
   const selectionMode = checkedIds.size > 0;
   const currentAccount = accounts.find((a) => a.folders.some((f) => f.id === selectedFolder));
   const canMove = (currentAccount?.folders.length ?? 0) > 1;
@@ -63,18 +69,44 @@ export function App() {
     [selectedFolder]
   );
 
+  // Auto-select first thread in multi-pane mode (only when no active filter)
+  useEffect(() => {
+    if (!multiPane || activeFilter) return;
+    if (folderThreads.length > 0 && !selectedThread) {
+      setSelectedThread(folderThreads[0]);
+      setMailView("thread");
+    } else if (folderThreads.length === 0) {
+      setSelectedThread(null);
+      setMailView("list");
+    }
+  }, [multiPane, folderThreads, selectedThread, activeFilter]);
+
   const handleSelectFolder = (folderId: string) => {
     setSelectedFolder(folderId);
-    setSelectedThread(null);
     setCheckedIds(new Set());
-    setMailView("list");
-    if (!isDesktop) setMobileOpen(false);
+    if (multiPane) {
+      const threads = sampleThreads.filter((t) => t.folderId === folderId);
+      if (threads.length > 0) {
+        setSelectedThread(threads[0]);
+        setMailView("thread");
+      } else {
+        setSelectedThread(null);
+        setMailView("list");
+      }
+    } else {
+      setSelectedThread(null);
+      setMailView("list");
+    }
+    if (layout === "mobile") setMobileOpen(false);
+    if (layout === "medium") setMobileOpen(false);
   };
 
   const handleSelectThread = (thread: MailThread) => {
     setSelectedThread(thread);
     setMailView("thread");
-    history.pushState({ mailView: "thread", threadId: thread.id }, "");
+    if (!multiPane) {
+      history.pushState({ mailView: "thread", threadId: thread.id }, "");
+    }
   };
 
   const handleBackToList = () => {
@@ -83,7 +115,9 @@ export function App() {
 
   const handleOpenCompose = () => {
     setMailView("compose");
-    history.pushState({ mailView: "compose" }, "");
+    if (!multiPane) {
+      history.pushState({ mailView: "compose" }, "");
+    }
   };
 
   useEffect(() => {
@@ -124,9 +158,9 @@ export function App() {
       ? "Calendar"
       : section === "chat"
         ? "Chat"
-        : mailView === "compose"
+        : mailView === "compose" && !multiPane
           ? "Compose"
-          : mailView === "thread" && selectedThread
+          : mailView === "thread" && selectedThread && !multiPane
             ? selectedThread.subject
             : "Inbox";
 
@@ -145,7 +179,64 @@ export function App() {
     />
   );
 
+  const handleFilteredChange = useCallback((filtered: MailThread[]) => {
+    if (!multiPane) return;
+    if (filtered.length > 0 && activeFilter) {
+      setSelectedThread(filtered[0]);
+      setMailView("thread");
+    } else if (filtered.length === 0) {
+      setSelectedThread(null);
+      setMailView("list");
+    }
+  }, [multiPane, activeFilter]);
+
   const showMailToolbar = section === "mail";
+  const showBackArrow = showMailToolbar && mailView === "thread" && !multiPane;
+  const showHamburger = !showBackArrow && layout !== "large" && section === "mail";
+  const showLogo = !showBackArrow && !showHamburger;
+  const showSearchBar = showMailToolbar && (multiPane || mailView === "list");
+  const showThreadActions = showMailToolbar && selectedThread && (multiPane ? mailView === "thread" : mailView === "thread");
+
+  const mailList = (
+    <MailList
+      threads={folderThreads}
+      onSelect={handleSelectThread}
+      selectedId={selectedThread?.id ?? null}
+      searchQuery={activeFilter}
+      onClearSearch={() => { setActiveFilter(""); setSearchInput(""); }}
+      checkedIds={checkedIds}
+      onToggleChecked={handleToggleChecked}
+      onFilteredChange={handleFilteredChange}
+    />
+  );
+
+  const rightPane = (
+    <>
+      {mailView === "compose" && selectedFolder && (
+        <ComposeScreen
+          folderId={selectedFolder}
+          onDiscard={() => {
+            if (multiPane && selectedThread) {
+              setMailView("thread");
+            } else {
+              setMailView("list");
+            }
+          }}
+        />
+      )}
+      {mailView === "thread" && selectedThread && (
+        <ThreadDetail thread={selectedThread} replyRequested={replyRequested} forwardRequested={forwardRequested} onPaneChange={setHasPaneOpen} />
+      )}
+      {multiPane && !selectedThread && mailView !== "compose" && (
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "text.secondary" }}>
+          <Box sx={{ textAlign: "center" }}>
+            <MailOutlineIcon sx={{ fontSize: 64, mb: 1 }} />
+            <Typography>No messages</Typography>
+          </Box>
+        </Box>
+      )}
+    </>
+  );
 
   return (
     <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -155,7 +246,7 @@ export function App() {
       >
         <Toolbar>
           {/* Selection mode toolbar */}
-          {showMailToolbar && mailView === "list" && selectionMode ? (
+          {showMailToolbar && selectionMode ? (
             <>
               <IconButton
                 color="inherit"
@@ -184,7 +275,8 @@ export function App() {
             </>
           ) : (
             <>
-              {showMailToolbar && mailView === "thread" ? (
+              {/* Leading icon: back arrow, hamburger, or logo */}
+              {showBackArrow && (
                 <IconButton
                   color="inherit"
                   edge="start"
@@ -194,7 +286,8 @@ export function App() {
                 >
                   <ArrowBackIcon />
                 </IconButton>
-              ) : !isDesktop && section === "mail" ? (
+              )}
+              {showHamburger && (
                 <IconButton
                   color="inherit"
                   edge="start"
@@ -204,10 +297,13 @@ export function App() {
                 >
                   <MenuIcon />
                 </IconButton>
-              ) : (
+              )}
+              {showLogo && (
                 <Box component="img" src="/mail.svg" alt="logo" sx={{ height: 32, ml: -2, mr: 2 }} />
               )}
-              {showMailToolbar && mailView === "list" && searching ? (
+
+              {/* Title / search */}
+              {showSearchBar && searching ? (
                 <InputBase
                   placeholder="Search…"
                   value={searchInput}
@@ -225,9 +321,7 @@ export function App() {
                   sx={{
                     flexGrow: 1,
                     color: "inherit",
-                    "& .MuiInputBase-input": {
-                      py: 0.5,
-                    },
+                    "& .MuiInputBase-input": { py: 0.5 },
                   }}
                 />
               ) : (
@@ -235,7 +329,9 @@ export function App() {
                   {title}
                 </Typography>
               )}
-              {showMailToolbar && mailView === "list" && (
+
+              {/* Search toggle */}
+              {showSearchBar && (
                 searching ? (
                   <IconButton
                     color="inherit"
@@ -254,7 +350,9 @@ export function App() {
                   </IconButton>
                 )
               )}
-              {showMailToolbar && mailView === "thread" && (
+
+              {/* Thread actions */}
+              {showThreadActions && (
                 <>
                   <Tooltip title="Forward all">
                     <IconButton color="inherit" aria-label="forward all" onClick={() => setForwardRequested((n) => n + 1)}>
@@ -280,26 +378,31 @@ export function App() {
         </Toolbar>
       </AppBar>
 
-      {/* Section nav — desktop icon rail */}
-      {isDesktop && (
+      {/* Section nav — icon rail (medium + large) */}
+      {layout !== "mobile" && (
         <SectionNav section={section} onChange={handleSectionChange} isDesktop />
       )}
 
-      {/* Mail folder drawer — mobile */}
-      {!isDesktop && section === "mail" && (
+      {/* Mail folder drawer — temporary (mobile + medium) */}
+      {layout !== "large" && section === "mail" && (
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
-          sx={{ "& .MuiDrawer-paper": { width: DRAWER_WIDTH } }}
+          sx={{
+            "& .MuiDrawer-paper": {
+              width: DRAWER_WIDTH,
+              ...(layout === "medium" && { ml: `${RAIL_WIDTH}px` }),
+            },
+          }}
           slotProps={{ backdrop: { onClick: () => setMobileOpen(false) } }}
         >
-          {sidebarMobile}
+          {layout === "mobile" ? sidebarMobile : sidebarDesktop}
         </Drawer>
       )}
 
-      {/* Mail folder drawer — desktop */}
-      {isDesktop && section === "mail" && (
+      {/* Mail folder drawer — permanent (large only) */}
+      {layout === "large" && section === "mail" && (
         <Drawer
           variant="permanent"
           sx={{
@@ -317,70 +420,85 @@ export function App() {
         </Drawer>
       )}
 
+      {/* Main content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           bgcolor: "background.paper",
           mt: "64px",
-          mb: isDesktop ? 0 : "56px",
+          mb: layout === "mobile" ? "56px" : 0,
           position: "relative",
-          height: isDesktop ? "calc(100vh - 64px)" : "calc(100vh - 64px - 56px)",
-          overflow: "auto",
+          height: layout === "mobile" ? "calc(100vh - 64px - 56px)" : "calc(100vh - 64px)",
+          overflow: "hidden",
+          display: "flex",
         }}
       >
         {section === "mail" && (
-          <>
-            {mailView === "compose" && selectedFolder && (
-              <ComposeScreen
-                folderId={selectedFolder}
-                onDiscard={() => setMailView("list")}
-              />
-            )}
-            {mailView === "thread" && selectedThread && (
-              <ThreadDetail thread={selectedThread} replyRequested={replyRequested} forwardRequested={forwardRequested} onPaneChange={setHasPaneOpen} />
-            )}
-            {mailView === "list" && (
-              <MailList
-                threads={folderThreads}
-                onSelect={handleSelectThread}
-                selectedId={selectedThread?.id ?? null}
-                searchQuery={activeFilter}
-                onClearSearch={() => { setActiveFilter(""); setSearchInput(""); }}
-                checkedIds={checkedIds}
-                onToggleChecked={handleToggleChecked}
-              />
-            )}
-
-            {mailView === "list" && !selectionMode && (
-              <Fab
-                color="primary"
-                aria-label="compose"
-                onClick={handleOpenCompose}
-                sx={{ position: "fixed", bottom: isDesktop ? 24 : 80, right: 24 }}
+          multiPane ? (
+            /* Two/three-pane: thread list + detail side by side */
+            <>
+              <Box
+                sx={{
+                  width: THREAD_LIST_WIDTH,
+                  minWidth: 280,
+                  flexShrink: 0,
+                  borderRight: "1px solid",
+                  borderColor: "divider",
+                  overflow: "auto",
+                }}
               >
-                <EditIcon />
-              </Fab>
-            )}
-            {mailView === "thread" && !hasPaneOpen && (
-              <Fab
-                color="primary"
-                aria-label="reply"
-                onClick={() => setReplyRequested((n) => n + 1)}
-                sx={{ position: "fixed", bottom: isDesktop ? 24 : 80, right: 24 }}
-              >
-                <ReplyIcon />
-              </Fab>
-            )}
-          </>
+                {mailList}
+              </Box>
+              <Box sx={{ flexGrow: 1, overflow: "auto" }}>
+                {rightPane}
+              </Box>
+            </>
+          ) : (
+            /* Single-pane mobile */
+            <Box sx={{ flexGrow: 1, overflow: "auto" }}>
+              {mailView === "list" && mailList}
+              {(mailView === "thread" || mailView === "compose") && rightPane}
+            </Box>
+          )
         )}
 
-        {section === "calendar" && <CalendarView />}
-        {section === "chat" && <ChatView />}
+        {section === "calendar" && (
+          <Box sx={{ flexGrow: 1, overflow: "auto" }}>
+            <CalendarView />
+          </Box>
+        )}
+        {section === "chat" && (
+          <Box sx={{ flexGrow: 1, overflow: "auto" }}>
+            <ChatView />
+          </Box>
+        )}
       </Box>
 
+      {/* FABs */}
+      {section === "mail" && !selectionMode && mailView !== "compose" && (multiPane || mailView === "list") && (
+        <Fab
+          color="primary"
+          aria-label="compose"
+          onClick={handleOpenCompose}
+          sx={{ position: "fixed", bottom: layout === "mobile" ? 80 : 24, right: 24 }}
+        >
+          <EditIcon />
+        </Fab>
+      )}
+      {section === "mail" && mailView === "thread" && !hasPaneOpen && (
+        <Fab
+          color="primary"
+          aria-label="reply"
+          onClick={() => setReplyRequested((n) => n + 1)}
+          sx={{ position: "fixed", bottom: layout === "mobile" ? 80 : 24, right: multiPane ? 88 : 24 }}
+        >
+          <ReplyIcon />
+        </Fab>
+      )}
+
       {/* Section nav — mobile bottom bar */}
-      {!isDesktop && (
+      {layout === "mobile" && (
         <SectionNav section={section} onChange={handleSectionChange} isDesktop={false} />
       )}
     </Box>

@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import {
   Alert,
   Checkbox,
@@ -23,6 +23,7 @@ interface MailListProps {
   onClearSearch?: () => void;
   checkedIds: Set<string>;
   onToggleChecked: (threadId: string) => void;
+  onFilteredChange?: (filtered: MailThread[]) => void;
 }
 
 function formatDate(iso: string): string {
@@ -36,11 +37,18 @@ function formatDate(iso: string): string {
 
 const LONG_PRESS_MS = 500;
 
-export function MailList({ threads, onSelect, selectedId, searchQuery = "", onClearSearch, checkedIds, onToggleChecked }: MailListProps) {
+export function MailList({ threads, onSelect, selectedId, searchQuery = "", onClearSearch, checkedIds, onToggleChecked, onFilteredChange }: MailListProps) {
   const q = searchQuery.toLowerCase();
   const filtered = q
     ? threads.filter((t) => t.subject.toLowerCase().includes(q))
     : threads;
+
+  const filteredCount = filtered.length;
+  const firstFilteredId = filtered[0]?.id ?? null;
+  useEffect(() => {
+    onFilteredChange?.(filtered);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredCount, firstFilteredId, q]);
 
   const selectionMode = checkedIds.size > 0;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

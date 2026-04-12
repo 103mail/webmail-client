@@ -9,4 +9,8 @@ export const accounts: MailAccount[] = [
     email: "jane@103mail.com",
     folders: [{ id: "jane-inbox", name: "Inbox" }],
   },
+  {
+    email: "empty@103mail.com",
+    folders: [{ id: "empty-inbox", name: "Inbox" }],
+  },
 ];
