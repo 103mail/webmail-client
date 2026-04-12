@@ -117,7 +117,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               placeholder="Write a reply…"
               multiline
               minRows={3}
-              maxRows={8}
+
               fullWidth
               size="small"
               autoFocus

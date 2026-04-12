@@ -65,8 +65,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, height: "100%", display: "flex", flexDirection: "column" }}>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, flexGrow: 1 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
         <Autocomplete
           multiple
           freeSolo
@@ -135,7 +134,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           fullWidth
           multiline
           minRows={3}
-          maxRows={8}
+
         />
 
         <Box sx={{ display: "flex", gap: 1 }}>
@@ -156,7 +155,6 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
             Discard
           </Button>
         </Box>
-      </Box>
     </Box>
   );
 }
