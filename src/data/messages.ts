@@ -73,6 +73,9 @@ export const sampleThreads: MailThread[] = [
         to: [{ name: "John", email: "john@103mail.com" }],
         body: "Hi John,\n\nPlease find the invoice attached. Payment is due by end of month.\n\nThanks,\nCarol",
         date: "2026-04-10T16:30:00Z",
+        attachments: [
+          { id: "a1", name: "Invoice_1042.pdf", size: "245 KB", type: "application/pdf" },
+        ],
       },
     ],
   },
@@ -123,6 +126,10 @@ export const sampleThreads: MailThread[] = [
         to: [{ name: "Jane", email: "jane@work.org" }],
         body: "Jane,\n\nI've shared the Q2 planning doc with you. Please review sections 3 and 4 before Friday.\n\nThanks,\nEve",
         date: "2026-04-11T10:00:00Z",
+        attachments: [
+          { id: "a2", name: "Q2_Planning_2026.docx", size: "1.2 MB", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+          { id: "a3", name: "Budget_Estimates.xlsx", size: "340 KB", type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+        ],
       },
     ],
   },

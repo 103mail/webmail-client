@@ -14,12 +14,20 @@ export interface MailAccount {
   folders: MailFolder[];
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  size: string;
+  type: string;
+}
+
 export interface MailMessage {
   id: string;
   from: Contact;
   to: Contact[];
   body: string;
   date: string;
+  attachments?: Attachment[];
 }
 
 export interface MailThread {

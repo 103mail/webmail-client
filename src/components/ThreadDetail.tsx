@@ -10,8 +10,20 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/Send";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import DescriptionIcon from "@mui/icons-material/Description";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
-import type { Contact, MailThread } from "../types";
+import type { Attachment, Contact, MailThread } from "../types";
+
+function attachmentIcon(type: string) {
+  if (type === "application/pdf") return <PictureAsPdfIcon fontSize="small" />;
+  if (type.includes("word") || type.includes("document")) return <DescriptionIcon fontSize="small" />;
+  if (type.includes("sheet") || type.includes("excel")) return <DescriptionIcon fontSize="small" />;
+  if (type.startsWith("image/")) return <InsertDriveFileIcon fontSize="small" />;
+  return <AttachFileIcon fontSize="small" />;
+}
 import { useState, useEffect, useCallback } from "react";
 import { loadReplyDraft, saveReplyDraft, clearReplyDraft } from "../drafts";
 import { sampleContacts } from "../data/contacts";
@@ -226,6 +238,20 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
             <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
               {msg.body}
             </Typography>
+            {msg.attachments && msg.attachments.length > 0 && (
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1.5 }}>
+                {msg.attachments.map((att: Attachment) => (
+                  <Chip
+                    key={att.id}
+                    icon={attachmentIcon(att.type)}
+                    label={`${att.name} (${att.size})`}
+                    variant="outlined"
+                    size="small"
+                    clickable
+                  />
+                ))}
+              </Box>
+            )}
           </Paper>
         ))}
       </Box>
