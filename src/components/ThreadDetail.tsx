@@ -24,7 +24,7 @@ function attachmentIcon(type: string) {
   if (type.startsWith("image/")) return <InsertDriveFileIcon fontSize="small" />;
   return <AttachFileIcon fontSize="small" />;
 }
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { loadReplyDraft, saveReplyDraft, clearReplyDraft } from "../drafts";
 import { sampleContacts } from "../data/contacts";
 
@@ -65,16 +65,14 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
     onPaneChange(pane !== "none");
   }, [pane, onPaneChange]);
 
-  // Save reply draft on unmount or thread change
-  const saveDraft = useCallback(() => {
-    if (pane === "reply") {
-      saveReplyDraft(thread.id, { text: replyText });
-    }
-  }, [thread.id, replyText, pane]);
-
+  // Autosave reply draft every 2 seconds
   useEffect(() => {
-    return () => saveDraft();
-  }, [saveDraft]);
+    if (pane !== "reply") return;
+    const timer = setInterval(() => {
+      saveReplyDraft(thread.id, { text: replyText });
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [pane, thread.id, replyText]);
 
   // Reset state when switching threads
   useEffect(() => {
