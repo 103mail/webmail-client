@@ -62,7 +62,7 @@ export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
       >
         <AttachFileIcon fontSize="small" color={dragOver ? "primary" : "action"} />
         {files.length === 0 ? (
-          <Typography variant="body1" sx={{ color: "text.disabled" }}>
+          <Typography variant="body1" sx={{ color: dragOver ? "primary.main" : "text.disabled" }}>
             {dragOver ? "Drop here" : "Attach files…"}
           </Typography>
         ) : (
