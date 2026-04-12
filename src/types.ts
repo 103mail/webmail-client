@@ -6,6 +6,7 @@ export interface Contact {
 export interface MailFolder {
   id: string;
   name: string;
+  unreadCount: number;
 }
 
 export interface MailAccount {

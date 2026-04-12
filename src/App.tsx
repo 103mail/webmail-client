@@ -244,7 +244,7 @@ export function App() {
         position="fixed"
         sx={{ zIndex: (t) => t.zIndex.drawer + 2 }}
       >
-        <Toolbar>
+        <Toolbar sx={{ gap: 1 }}>
           {/* Selection mode toolbar */}
           {showMailToolbar && selectionMode ? (
             <>
@@ -252,7 +252,7 @@ export function App() {
                 color="inherit"
                 edge="start"
                 onClick={handleClearSelection}
-                sx={{ mr: 2 }}
+                sx={{ mr: 1 }}
                 aria-label="clear selection"
               >
                 <CloseIcon />
@@ -281,7 +281,7 @@ export function App() {
                   color="inherit"
                   edge="start"
                   onClick={handleBackToList}
-                  sx={{ mr: 2 }}
+                  sx={{ mr: 1 }}
                   aria-label="back to list"
                 >
                   <ArrowBackIcon />
@@ -292,14 +292,14 @@ export function App() {
                   color="inherit"
                   edge="start"
                   onClick={() => setMobileOpen((o) => !o)}
-                  sx={{ mr: 2 }}
+                  sx={{ mr: 1 }}
                   aria-label="open drawer"
                 >
                   <MenuIcon />
                 </IconButton>
               )}
               {showLogo && (
-                <Box component="img" src="/mail.svg" alt="logo" sx={{ height: 32, ml: -2, mr: 2 }} />
+                <Box component="img" src="/mail.svg" alt="logo" sx={{ height: 32, ml: -2, mr: 1 }} />
               )}
 
               {/* Title / search */}

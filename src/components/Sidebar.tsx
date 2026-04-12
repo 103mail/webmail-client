@@ -8,6 +8,7 @@ import {
   ListItemText,
   ListSubheader,
   Toolbar,
+  Typography,
 } from "@mui/material";
 import InboxIcon from "@mui/icons-material/Inbox";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -42,7 +43,15 @@ export function Sidebar({ selectedFolder, onSelectFolder, showSettingsAccount = 
                   <ListItemIcon>
                     <InboxIcon />
                   </ListItemIcon>
-                  <ListItemText primary={folder.name} />
+                  <ListItemText
+                    primary={folder.name}
+                    sx={folder.unreadCount > 0 ? { "& .MuiListItemText-primary": { fontWeight: 700 } } : undefined}
+                  />
+                  {folder.unreadCount > 0 && (
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>
+                      {folder.unreadCount}
+                    </Typography>
+                  )}
                 </ListItemButton>
               </ListItem>
             ))}
