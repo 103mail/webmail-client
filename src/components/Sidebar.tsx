@@ -61,7 +61,6 @@ export function Sidebar({ selectedFolder, onSelectFolder, showSettingsAccount = 
 
       {showSettingsAccount && (
         <>
-          <Divider />
           <List disablePadding>
             <ListItem disablePadding>
               <ListItemButton>
