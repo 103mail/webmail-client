@@ -118,23 +118,22 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                 <Chip key={email} label={name} size="small" />
               ))}
             </Box>
+            <TextField
+              placeholder="Write a reply…"
+              multiline
+              minRows={3}
+              fullWidth
+              size="small"
+              autoFocus
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+            />
             {/attach/i.test(replyText) && replyAttachments.length === 0 && (
-              <Alert severity="info">
+              <Alert severity="warning">
                 It looks like you mentioned an attachment but haven't attached any files.
               </Alert>
             )}
-            <FileAttachments files={replyAttachments} onChange={setReplyAttachments}>
-              <TextField
-                placeholder="Write a reply…"
-                multiline
-                minRows={3}
-                fullWidth
-                size="small"
-                autoFocus
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-              />
-            </FileAttachments>
+            <FileAttachments files={replyAttachments} onChange={setReplyAttachments} />
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
               <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>
                 Send

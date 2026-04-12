@@ -5,7 +5,6 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 interface FileAttachmentsProps {
   files: File[];
   onChange: (files: File[]) => void;
-  children: React.ReactNode;
 }
 
 function formatSize(bytes: number): string {
@@ -14,7 +13,7 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function FileAttachments({ files, onChange, children }: FileAttachmentsProps) {
+export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,55 +28,27 @@ export function FileAttachments({ files, onChange, children }: FileAttachmentsPr
     onChange(files.filter((_, i) => i !== index));
   }, [files, onChange]);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    addFiles(e.dataTransfer.files);
-  }, [addFiles]);
-
   return (
-    <Box
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      sx={{
-        position: "relative",
-        border: dragOver ? "2px dashed" : "2px solid transparent",
-        borderColor: dragOver ? "primary.main" : "transparent",
-        borderRadius: 1,
-        transition: "border-color 0.15s",
-      }}
-    >
-      {children}
-
+    <>
       <input
         ref={inputRef}
         type="file"
         multiple
         hidden
-        onChange={(e) => {
-          addFiles(e.target.files);
-          e.target.value = "";
-        }}
+        onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
       />
 
       <Box
         onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
         sx={{
-          mt: 1,
           px: 1.5,
           py: 1,
           border: "1px solid",
-          borderColor: "divider",
+          borderColor: dragOver ? "primary.main" : "action.disabled",
+          bgcolor: dragOver ? "rgba(25, 118, 210, 0.08)" : "transparent",
           borderRadius: 1,
           display: "flex",
           alignItems: "center",
@@ -85,13 +56,14 @@ export function FileAttachments({ files, onChange, children }: FileAttachmentsPr
           gap: 0.75,
           cursor: "pointer",
           minHeight: 40,
+          transition: "border-color 0.15s, background-color 0.15s",
           "&:hover": { borderColor: "text.primary" },
         }}
       >
-        <AttachFileIcon fontSize="small" color="action" />
+        <AttachFileIcon fontSize="small" color={dragOver ? "primary" : "action"} />
         {files.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            {dragOver ? "Drop files here" : "Attach files…"}
+          <Typography variant="body1" sx={{ color: "text.disabled" }}>
+            {dragOver ? "Drop here" : "Attach files…"}
           </Typography>
         ) : (
           files.map((file, index) => (
@@ -105,6 +77,6 @@ export function FileAttachments({ files, onChange, children }: FileAttachmentsPr
           ))
         )}
       </Box>
-    </Box>
+    </>
   );
 }

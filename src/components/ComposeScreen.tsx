@@ -129,21 +129,20 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           fullWidth
         />
 
+        <TextField
+          placeholder="Write your message…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          fullWidth
+          multiline
+          minRows={3}
+        />
         {/attach/i.test(body) && attachments.length === 0 && (
-          <Alert severity="info">
+          <Alert severity="warning">
             It looks like you mentioned an attachment but haven't attached any files.
           </Alert>
         )}
-        <FileAttachments files={attachments} onChange={setAttachments}>
-          <TextField
-            placeholder="Write your message…"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            fullWidth
-            multiline
-            minRows={3}
-          />
-        </FileAttachments>
+        <FileAttachments files={attachments} onChange={setAttachments} />
 
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
