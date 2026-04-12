@@ -82,7 +82,7 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
     <>
     {q && (
       <Alert
-        severity="info"
+        severity="warning"
         sx={{ borderRadius: 0 }}
         action={
           <IconButton size="small" color="inherit" onClick={onClearSearch} aria-label="clear filter">
