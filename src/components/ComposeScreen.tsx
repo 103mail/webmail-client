@@ -135,7 +135,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           onChange={(e) => setBody(e.target.value)}
           fullWidth
           multiline
-          minRows={3}
+          minRows={5}
         />
         {/attach/i.test(body) && attachments.length === 0 && (
           <Alert severity="warning">

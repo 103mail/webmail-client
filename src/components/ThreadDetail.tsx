@@ -121,7 +121,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
             <TextField
               placeholder="Write a reply…"
               multiline
-              minRows={3}
+              minRows={5}
               fullWidth
               size="small"
               autoFocus
