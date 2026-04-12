@@ -199,7 +199,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                 <TextField {...params} label="Forward to" placeholder="Add recipients…" size="small" />
               )}
             />
-            <Box sx={{ display: "flex", gap: 1 }}>
+            <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
               <Button variant="contained" startIcon={<SendIcon />} disabled={forwardTo.length === 0}>
                 Forward
               </Button>
