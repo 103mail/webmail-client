@@ -194,18 +194,18 @@ export function App() {
                 >
                   <ArrowBackIcon />
                 </IconButton>
+              ) : !isDesktop && section === "mail" ? (
+                <IconButton
+                  color="inherit"
+                  edge="start"
+                  onClick={() => setMobileOpen((o) => !o)}
+                  sx={{ mr: 2 }}
+                  aria-label="open drawer"
+                >
+                  <MenuIcon />
+                </IconButton>
               ) : (
-                !isDesktop && section === "mail" && (
-                  <IconButton
-                    color="inherit"
-                    edge="start"
-                    onClick={() => setMobileOpen((o) => !o)}
-                    sx={{ mr: 2 }}
-                    aria-label="open drawer"
-                  >
-                    <MenuIcon />
-                  </IconButton>
-                )
+                <Box component="img" src="/mail.svg" alt="logo" sx={{ height: 32, ml: -2, mr: 2 }} />
               )}
               {showMailToolbar && mailView === "list" && searching ? (
                 <InputBase
