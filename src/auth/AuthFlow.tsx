@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Card, CardContent } from "@mui/material";
+import { Box, Card, CardContent, Typography } from "@mui/material";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
@@ -21,6 +21,12 @@ export function AuthFlow() {
       }}
     >
       <Card sx={{ width: "100%", maxWidth: 400 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", pt: 4, px: 4 }}>
+          <Box component="img" src="/103mail.svg" alt="103mail" sx={{ height: 64 }} />
+        </Box>
+        <Typography variant="h6" align="center" color="text.secondary" sx={{ mt: 1 }}>
+          103mail.com
+        </Typography>
         <CardContent sx={{ p: 4 }}>
           {screen === "login" && (
             <LoginForm
