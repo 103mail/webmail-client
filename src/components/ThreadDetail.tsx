@@ -101,11 +101,13 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
   newest.to.forEach((c) => replyRecipients.set(c.email, c.name));
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Reply pane */}
-      {pane === "reply" && (
-        <>
-        <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
+    <Box sx={{ height: "100%", overflow: "auto" }}>
+      <Box sx={{ px: { xs: 2, sm: 3 }, py: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* Subject */}
+        <Typography variant="h6">{thread.subject}</Typography>
+
+        {/* Reply pane */}
+        {pane === "reply" && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Typography variant="body2" color="text.secondary">To:</Typography>
@@ -124,7 +126,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
             />
-            <Box sx={{ display: "flex", gap: 1 }}>
+            <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
               <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>
                 Send
               </Button>
@@ -133,14 +135,10 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               </Button>
             </Box>
           </Box>
-        </Box>
-        </>
-      )}
+        )}
 
-      {/* Forward pane */}
-      {pane === "forward" && (
-        <>
-        <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
+        {/* Forward pane */}
+        {pane === "forward" && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Typography variant="body2" color="text.secondary">To:</Typography>
@@ -210,13 +208,9 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               </Button>
             </Box>
           </Box>
-        </Box>
-        </>
-      )}
+        )}
 
-      {/* Subject + Messages */}
-      <Box sx={{ flexGrow: 1, overflow: "auto", px: { xs: 2, sm: 3 }, py: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Typography variant="h6">{thread.subject}</Typography>
+        {/* Messages */}
         {thread.messages.map((msg) => (
           <Paper key={msg.id} variant="outlined" sx={{ p: 2 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 0.5 }}>
