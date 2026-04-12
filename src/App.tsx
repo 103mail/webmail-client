@@ -130,17 +130,25 @@ export function App() {
             ? selectedThread.subject
             : "Inbox";
 
-  const sidebar = (
+  const sidebarDesktop = (
     <Sidebar
       selectedFolder={selectedFolder}
       onSelectFolder={handleSelectFolder}
     />
   );
 
+  const sidebarMobile = (
+    <Sidebar
+      selectedFolder={selectedFolder}
+      onSelectFolder={handleSelectFolder}
+      showSettingsAccount
+    />
+  );
+
   const showMailToolbar = section === "mail";
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       <AppBar
         position="fixed"
         sx={{ zIndex: (t) => t.zIndex.drawer + 2 }}
@@ -286,7 +294,7 @@ export function App() {
           sx={{ "& .MuiDrawer-paper": { width: DRAWER_WIDTH } }}
           slotProps={{ backdrop: { onClick: () => setMobileOpen(false) } }}
         >
-          {sidebar}
+          {sidebarMobile}
         </Drawer>
       )}
 
@@ -305,7 +313,7 @@ export function App() {
           }}
           open
         >
-          {sidebar}
+          {sidebarDesktop}
         </Drawer>
       )}
 
@@ -314,10 +322,11 @@ export function App() {
         sx={{
           flexGrow: 1,
           bgcolor: "background.paper",
-          pt: "64px",
-          pb: isDesktop ? 0 : "56px",
+          mt: "64px",
+          mb: isDesktop ? 0 : "56px",
           position: "relative",
-          minHeight: "100vh",
+          height: isDesktop ? "calc(100vh - 64px)" : "calc(100vh - 64px - 56px)",
+          overflow: "auto",
         }}
       >
         {section === "mail" && (

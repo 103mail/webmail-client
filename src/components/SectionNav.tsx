@@ -9,6 +9,8 @@ import {
 import MailIcon from "@mui/icons-material/Mail";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import ChatIcon from "@mui/icons-material/Chat";
+import SettingsIcon from "@mui/icons-material/Settings";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
 export type Section = "mail" | "calendar" | "chat";
 
@@ -27,10 +29,11 @@ interface SectionNavProps {
 export function SectionNav({ section, onChange, isDesktop }: SectionNavProps) {
   if (isDesktop) {
     return (
+      <>
+      <Box sx={{ width: 56, flexShrink: 0 }} />
       <Box
         sx={{
           width: 56,
-          flexShrink: 0,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -39,9 +42,10 @@ export function SectionNav({ section, onChange, isDesktop }: SectionNavProps) {
           borderRight: "1px solid",
           borderColor: "divider",
           bgcolor: "background.paper",
-          position: "sticky",
+          position: "fixed",
           top: 0,
-          height: "100vh",
+          bottom: 0,
+          left: 0,
           zIndex: (t) => t.zIndex.drawer + 1,
         }}
       >
@@ -56,7 +60,21 @@ export function SectionNav({ section, onChange, isDesktop }: SectionNavProps) {
             </IconButton>
           </Tooltip>
         ))}
+
+        <Box sx={{ flexGrow: 1 }} />
+
+        <Tooltip title="Settings" placement="right">
+          <IconButton aria-label="settings">
+            <SettingsIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Account" placement="right">
+          <IconButton aria-label="account" sx={{ mb: 2 }}>
+            <AccountCircleIcon />
+          </IconButton>
+        </Tooltip>
       </Box>
+      </>
     );
   }
 
