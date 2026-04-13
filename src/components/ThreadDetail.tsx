@@ -118,7 +118,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Typography variant="body2" color="text.secondary">To:</Typography>
               {[...replyRecipients.entries()].map(([email, name]) => (
-                <Chip key={email} label={name} size="small" />
+                <Chip key={email} label={name} />
               ))}
             </Box>
             <TextField
@@ -126,7 +126,6 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               multiline
               minRows={5}
               fullWidth
-              size="small"
               autoFocus
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
@@ -137,7 +136,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               </Alert>
             )}
             {(showAttachments || replyAttachments.length > 0) && (
-              <FileAttachments size="small" files={replyAttachments} onChange={(files) => { setReplyAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
+              <FileAttachments files={replyAttachments} onChange={(files) => { setReplyAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
             )}
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
               <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>
@@ -150,7 +149,6 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                 <>
                   <Box sx={{ flex: 1 }} />
                   <Button
-                    size="small"
                     variant="text"
                     startIcon={<AttachFileIcon fontSize="small" />}
                     onClick={() => setShowAttachments(true)}
@@ -170,7 +168,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Typography variant="body2" color="text.secondary">To:</Typography>
               {[...replyRecipients.entries()].map(([email, name]) => (
-                <Chip key={email} label={name} size="small" />
+                <Chip key={email} label={name} />
               ))}
             </Box>
             <Autocomplete
@@ -201,7 +199,6 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                     <Chip
                       key={key}
                       label={contact.name === contact.email ? contact.email : contact.name}
-                      size="small"
                       {...rest}
                     />
                   );
@@ -223,7 +220,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                 );
               }}
               renderInput={(params) => (
-                <TextField {...params} label="Forward to" placeholder="Add recipients…" size="small" />
+                <TextField {...params} label="Forward to" placeholder="Add recipients…" />
               )}
             />
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>

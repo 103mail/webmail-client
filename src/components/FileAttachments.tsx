@@ -87,7 +87,6 @@ export function FileAttachments({ files, onChange, size = "medium" }: FileAttach
               <Chip
                 key={`${file.name}-${file.size}`}
                 label={`${file.name} (${formatSize(file.size)})`}
-                size="small"
                 onDelete={(e) => { e.stopPropagation(); removeFile(index); }}
               />
             ))}

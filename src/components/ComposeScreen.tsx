@@ -72,7 +72,6 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
         <Autocomplete
-          size="small"
           multiple
           freeSolo
           options={sampleContacts}
@@ -100,8 +99,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
                 <Chip
                   key={key}
                   label={contact.name === contact.email ? contact.email : contact.name}
-                  size="small"
-                  {...rest}
+                    {...rest}
                 />
               );
             })
@@ -128,7 +126,6 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
 
         <TextField
           label="Subject"
-          size="small"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           fullWidth
@@ -136,7 +133,6 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
 
         <TextField
           placeholder="Write your message…"
-          size="small"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           fullWidth
@@ -149,7 +145,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           </Alert>
         )}
         {(showAttachments || attachments.length > 0) && (
-          <FileAttachments size="small" files={attachments} onChange={(files) => { setAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
+          <FileAttachments files={attachments} onChange={(files) => { setAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
         )}
 
         <Box sx={{ display: "flex", gap: 1 }}>
@@ -173,7 +169,6 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
             <>
               <Box sx={{ flex: 1 }} />
               <Button
-                size="small"
                 variant="text"
                 startIcon={<AttachFileIcon fontSize="small" />}
                 onClick={() => setShowAttachments(true)}
