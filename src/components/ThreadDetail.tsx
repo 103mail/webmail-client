@@ -174,6 +174,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
             <Autocomplete
               multiple
               freeSolo
+              autoSelect
               options={sampleContacts}
               getOptionLabel={(option) =>
                 typeof option === "string" ? option : `${option.name} <${option.email}>`

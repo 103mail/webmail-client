@@ -74,6 +74,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
         <Autocomplete
           multiple
           freeSolo
+          autoSelect
           options={sampleContacts}
           getOptionLabel={(option) =>
             typeof option === "string" ? option : `${option.name} <${option.email}>`
