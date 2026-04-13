@@ -1,6 +1,5 @@
 import { useRef, useState, useCallback } from "react";
 import { Box, Chip, Typography } from "@mui/material";
-import AttachFileIcon from "@mui/icons-material/AttachFile";
 
 interface FileAttachmentsProps {
   files: File[];
@@ -44,8 +43,10 @@ export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
         sx={{
+          position: "relative",
           px: 1.5,
-          py: 1,
+          py: files.length > 0 ? 1.5 : 1,
+          pt: files.length > 0 ? 1.5 : 1,
           border: "1px solid",
           borderColor: dragOver ? "primary.main" : "action.disabled",
           bgcolor: dragOver ? "rgba(25, 118, 210, 0.08)" : "transparent",
@@ -60,21 +61,37 @@ export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
           "&:hover": { borderColor: "text.primary" },
         }}
       >
-        <AttachFileIcon fontSize="small" color={dragOver ? "primary" : "action"} />
         {files.length === 0 ? (
           <Typography variant="body1" sx={{ color: dragOver ? "primary.main" : "text.disabled" }}>
-            {dragOver ? "Drop here" : "Attach files…"}
+            Attachments
           </Typography>
         ) : (
-          files.map((file, index) => (
-            <Chip
-              key={`${file.name}-${file.size}`}
-              label={`${file.name} (${formatSize(file.size)})`}
-              size="small"
-              variant="outlined"
-              onDelete={(e) => { e.stopPropagation(); removeFile(index); }}
-            />
-          ))
+          <>
+            <Typography
+              variant="caption"
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 8,
+                transform: "translateY(-50%)",
+                bgcolor: "background.paper",
+                px: 0.5,
+                color: dragOver ? "primary.main" : "text.secondary",
+                lineHeight: 1,
+              }}
+            >
+              Attachments
+            </Typography>
+            {files.map((file, index) => (
+              <Chip
+                key={`${file.name}-${file.size}`}
+                label={`${file.name} (${formatSize(file.size)})`}
+                size="small"
+                variant="outlined"
+                onDelete={(e) => { e.stopPropagation(); removeFile(index); }}
+              />
+            ))}
+          </>
         )}
       </Box>
     </>
