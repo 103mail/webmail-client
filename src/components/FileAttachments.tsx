@@ -45,8 +45,7 @@ export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
         sx={{
           position: "relative",
           px: 1.5,
-          py: files.length > 0 ? 1.5 : 1,
-          pt: files.length > 0 ? 1.5 : 1,
+          py: 1,
           border: "1px solid",
           borderColor: dragOver ? "primary.main" : "action.disabled",
           bgcolor: dragOver ? "rgba(25, 118, 210, 0.08)" : "transparent",
