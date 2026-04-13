@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Card, CardContent, Typography } from "@mui/material";
+import { Box, Card, CardContent, Link, Typography } from "@mui/material";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
@@ -13,6 +13,7 @@ export function AuthFlow() {
     <Box
       sx={{
         display: "flex",
+        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
@@ -20,13 +21,10 @@ export function AuthFlow() {
         p: 2,
       }}
     >
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+        <Box component="img" src="/103mail.svg" alt="103mail" sx={{ height: 64 }} />
+      </Box>
       <Card sx={{ width: "100%", maxWidth: 400 }}>
-        <Box sx={{ display: "flex", justifyContent: "center", pt: 4, px: 4 }}>
-          <Box component="img" src="/103mail.svg" alt="103mail" sx={{ height: 64 }} />
-        </Box>
-        <Typography variant="h6" align="center" color="text.secondary" sx={{ mt: 1 }}>
-          103mail.com
-        </Typography>
         <CardContent sx={{ p: 4 }}>
           {screen === "login" && (
             <LoginForm
@@ -42,6 +40,12 @@ export function AuthFlow() {
           )}
         </CardContent>
       </Card>
+      <Typography variant="body2" align="center" sx={{ mt: 3, color: "rgba(0,0,0,0.25)" }}>
+        Powered by:{" "}
+        <Link href="https://103mail.com" target="_blank" rel="noopener" underline="hover" color="inherit">
+          103mail.com
+        </Link>
+      </Typography>
     </Box>
   );
 }

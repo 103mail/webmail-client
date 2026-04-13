@@ -107,7 +107,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
   newest.to.forEach((c) => replyRecipients.set(c.email, c.name));
 
   return (
-    <Box sx={{ height: "100%", overflow: "auto" }}>
+    <Box sx={{ height: "100%", overflow: "auto", bgcolor: "grey.100" }}>
       <Box sx={{ px: { xs: 2, sm: 3 }, py: 2, display: "flex", flexDirection: "column", gap: 2 }}>
         {/* Subject */}
         <Typography variant="h6">{thread.subject}</Typography>
