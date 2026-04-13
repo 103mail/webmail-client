@@ -6,6 +6,8 @@ import {
   Fab,
   IconButton,
   InputBase,
+  Menu,
+  MenuItem,
   Toolbar,
   Tooltip,
   Typography,
@@ -54,6 +56,7 @@ export function App() {
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [moveAnchor, setMoveAnchor] = useState<null | HTMLElement>(null);
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
   const isXl = useMediaQuery(theme.breakpoints.up("xl"));
@@ -264,7 +267,7 @@ export function App() {
               </Typography>
               {canMove && (
                 <Tooltip title="Move">
-                  <IconButton color="inherit" aria-label="move threads">
+                  <IconButton color="inherit" aria-label="move threads" onClick={(e) => setMoveAnchor(e.currentTarget)}>
                     <DriveFileMoveIcon />
                   </IconButton>
                 </Tooltip>
@@ -363,7 +366,7 @@ export function App() {
                   </Tooltip>
                   {canMove && (
                     <Tooltip title="Move to folder">
-                      <IconButton color="inherit" aria-label="move to folder">
+                      <IconButton color="inherit" aria-label="move to folder" onClick={(e) => setMoveAnchor(e.currentTarget)}>
                         <DriveFileMoveIcon />
                       </IconButton>
                     </Tooltip>
@@ -378,6 +381,24 @@ export function App() {
             </>
           )}
         </Toolbar>
+        <Menu
+          anchorEl={moveAnchor}
+          open={Boolean(moveAnchor)}
+          onClose={() => setMoveAnchor(null)}
+        >
+          {currentAccount?.folders
+            .filter((f) => f.id !== selectedFolder)
+            .map((f) => (
+              <MenuItem
+                key={f.id}
+                onClick={() => {
+                  setMoveAnchor(null);
+                }}
+              >
+                {f.name}
+              </MenuItem>
+            ))}
+        </Menu>
       </AppBar>
 
       {/* Section nav — icon rail (medium + large) */}
