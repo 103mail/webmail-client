@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
 import { FileAttachments } from "./FileAttachments";
 import { sampleContacts } from "../data/contacts";
 import type { Contact } from "../types";
@@ -26,6 +27,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   const [subject, setSubject] = useState(draft?.subject ?? "");
   const [body, setBody] = useState(draft?.body ?? "");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [showAttachments, setShowAttachments] = useState(false);
   const discardedRef = useRef(false);
 
   const saveDraft = useCallback(() => {
@@ -44,6 +46,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
     setSubject(d?.subject ?? "");
     setBody(d?.body ?? "");
     setAttachments([]);
+    setShowAttachments(false);
   }, [folderId]);
 
   const handleSend = () => {
@@ -142,7 +145,9 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
             It looks like you mentioned an attachment but haven't attached any files.
           </Alert>
         )}
-        <FileAttachments files={attachments} onChange={setAttachments} />
+        {(showAttachments || attachments.length > 0) && (
+          <FileAttachments files={attachments} onChange={(files) => { setAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
+        )}
 
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
@@ -161,6 +166,20 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           >
             Discard
           </Button>
+          {!showAttachments && attachments.length === 0 && (
+            <>
+              <Box sx={{ flex: 1 }} />
+              <Button
+                size="small"
+                variant="text"
+                startIcon={<AttachFileIcon fontSize="small" />}
+                onClick={() => setShowAttachments(true)}
+                color="inherit"
+              >
+                Attach
+              </Button>
+            </>
+          )}
         </Box>
     </Box>
   );

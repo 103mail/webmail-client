@@ -52,6 +52,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
   const [replyText, setReplyText] = useState(draft?.text ?? "");
   const [forwardTo, setForwardTo] = useState<Contact[]>([]);
   const [replyAttachments, setReplyAttachments] = useState<File[]>([]);
+  const [showAttachments, setShowAttachments] = useState(false);
 
   // Open reply pane when FAB is pressed
   useEffect(() => {
@@ -82,6 +83,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
     const d = loadReplyDraft(thread.id);
     setReplyText(d?.text ?? "");
     setReplyAttachments([]);
+    setShowAttachments(false);
     setPane(d !== null ? "reply" : "none");
     setForwardTo([]);
   }, [thread.id]);
@@ -90,6 +92,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
     setPane("none");
     setReplyText("");
     setReplyAttachments([]);
+    setShowAttachments(false);
     clearReplyDraft(thread.id);
   };
 
@@ -133,7 +136,9 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                 It looks like you mentioned an attachment but haven't attached any files.
               </Alert>
             )}
-            <FileAttachments files={replyAttachments} onChange={setReplyAttachments} />
+            {(showAttachments || replyAttachments.length > 0) && (
+              <FileAttachments files={replyAttachments} onChange={(files) => { setReplyAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
+            )}
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
               <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>
                 Send
@@ -141,6 +146,20 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               <Button variant="text" color="inherit" startIcon={<DeleteIcon />} onClick={handleDiscardReply}>
                 Discard
               </Button>
+              {!showAttachments && replyAttachments.length === 0 && (
+                <>
+                  <Box sx={{ flex: 1 }} />
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<AttachFileIcon fontSize="small" />}
+                    onClick={() => setShowAttachments(true)}
+                    color="inherit"
+                  >
+                    Attach
+                  </Button>
+                </>
+              )}
             </Box>
           </Box>
         )}
