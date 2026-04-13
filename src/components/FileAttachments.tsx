@@ -4,6 +4,7 @@ import { Box, Chip, Typography } from "@mui/material";
 interface FileAttachmentsProps {
   files: File[];
   onChange: (files: File[]) => void;
+  size?: "small" | "medium";
 }
 
 function formatSize(bytes: number): string {
@@ -12,7 +13,8 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
+export function FileAttachments({ files, onChange, size = "medium" }: FileAttachmentsProps) {
+  const small = size === "small";
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -44,8 +46,8 @@ export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
         onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
         sx={{
           position: "relative",
-          px: 1.5,
-          py: 1,
+          px: small ? 1 : 1.5,
+          py: small ? 0.5 : 1,
           border: "1px solid",
           borderColor: dragOver ? "primary.main" : "action.disabled",
           bgcolor: dragOver ? "rgba(25, 118, 210, 0.08)" : "transparent",
@@ -53,15 +55,15 @@ export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
           display: "flex",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: 0.75,
+          gap: small ? 0.5 : 0.75,
           cursor: "pointer",
-          minHeight: 40,
+          minHeight: small ? 32 : 40,
           transition: "border-color 0.15s, background-color 0.15s",
           "&:hover": { borderColor: "text.primary" },
         }}
       >
         {files.length === 0 ? (
-          <Typography variant="body1" sx={{ color: dragOver ? "primary.main" : "text.secondary" }}>
+          <Typography variant={small ? "body2" : "body1"} sx={{ color: dragOver ? "primary.main" : "text.secondary" }}>
             {dragOver ? "Drop here" : "Attachments"}
           </Typography>
         ) : (
@@ -86,7 +88,6 @@ export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
                 key={`${file.name}-${file.size}`}
                 label={`${file.name} (${formatSize(file.size)})`}
                 size="small"
-                variant="outlined"
                 onDelete={(e) => { e.stopPropagation(); removeFile(index); }}
               />
             ))}

@@ -137,7 +137,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               </Alert>
             )}
             {(showAttachments || replyAttachments.length > 0) && (
-              <FileAttachments files={replyAttachments} onChange={(files) => { setReplyAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
+              <FileAttachments size="small" files={replyAttachments} onChange={(files) => { setReplyAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
             )}
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
               <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>

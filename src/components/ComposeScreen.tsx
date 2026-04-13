@@ -72,6 +72,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
         <Autocomplete
+          size="small"
           multiple
           freeSolo
           options={sampleContacts}
@@ -127,6 +128,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
 
         <TextField
           label="Subject"
+          size="small"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           fullWidth
@@ -146,7 +148,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           </Alert>
         )}
         {(showAttachments || attachments.length > 0) && (
-          <FileAttachments files={attachments} onChange={(files) => { setAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
+          <FileAttachments size="small" files={attachments} onChange={(files) => { setAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
         )}
 
         <Box sx={{ display: "flex", gap: 1 }}>
