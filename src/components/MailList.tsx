@@ -97,19 +97,6 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
 
   return (
     <>
-    {q && (
-      <Alert
-        severity="warning"
-        sx={{ borderRadius: 0 }}
-        action={
-          <IconButton size="small" color="inherit" onClick={onClearSearch} aria-label="clear filter">
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        }
-      >
-        Showing results for &lsquo;{searchQuery}&rsquo;
-      </Alert>
-    )}
     <Box sx={{ display: "flex", justifyContent: "center", py: 1, px: 2 }}>
       <ToggleButtonGroup
         value={timeRange}
@@ -124,6 +111,19 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
         <ToggleButton value="100y">ever</ToggleButton>
       </ToggleButtonGroup>
     </Box>
+    {q && (
+      <Alert
+        severity="warning"
+        sx={{ borderRadius: 0 }}
+        action={
+          <IconButton size="small" color="inherit" onClick={onClearSearch} aria-label="clear filter">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
+      >
+        Showing results for &lsquo;{searchQuery}&rsquo;
+      </Alert>
+    )}
     {filtered.length === 0 ? (
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography color="text.secondary">No messages</Typography>

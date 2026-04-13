@@ -166,7 +166,7 @@ export const sampleThreads: MailThread[] = [
         from: { name: "Grace Wilson", email: "grace@103mail.com" },
         to: [{ name: "Jane", email: "jane@work.org" }],
         body: "Jane,\n\nUsers are reporting a 500 error on the login page when using Safari. Can you take a look?\n\nGrace",
-        date: "2026-04-09T17:45:00Z",
+        date: "2026-04-01T17:45:00Z",
       },
     ],
   },
