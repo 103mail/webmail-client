@@ -63,7 +63,7 @@ export function FileAttachments({ files, onChange }: FileAttachmentsProps) {
       >
         {files.length === 0 ? (
           <Typography variant="body1" sx={{ color: dragOver ? "primary.main" : "text.secondary" }}>
-            Attachments
+            {dragOver ? "Drop here" : "Attachments"}
           </Typography>
         ) : (
           <>
