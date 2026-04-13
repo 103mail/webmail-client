@@ -294,7 +294,7 @@ export function ChatView() {
                     variant="body2"
                     noWrap
                     color={chat.unreadCount > 0 ? "text.primary" : "text.secondary"}
-                    sx={{ fontWeight: chat.unreadCount > 0 ? 600 : 400 }}
+                    sx={{ fontWeight: chat.unreadCount > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", display: "block" }}
                     component="span"
                   >
                     {lastMsg && (
