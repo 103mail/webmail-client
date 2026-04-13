@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Alert,
   Checkbox,
@@ -8,6 +8,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   Box,
   Chip,
@@ -35,13 +37,28 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+type TimeRange = "1w" | "1m" | "1y" | "100y";
+
+function getDateThreshold(range: TimeRange): Date {
+  const now = new Date();
+  switch (range) {
+    case "1w": return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+    case "1m": return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    case "1y": return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    case "100y": return new Date(now.getFullYear() - 100, now.getMonth(), now.getDate());
+  }
+}
+
 const LONG_PRESS_MS = 500;
 
 export function MailList({ threads, onSelect, selectedId, searchQuery = "", onClearSearch, checkedIds, onToggleChecked, onFilteredChange }: MailListProps) {
+  const [timeRange, setTimeRange] = useState<TimeRange>("1w");
+
   const q = searchQuery.toLowerCase();
-  const filtered = q
-    ? threads.filter((t) => t.subject.toLowerCase().includes(q))
-    : threads;
+  const threshold = getDateThreshold(timeRange);
+  const filtered = threads
+    .filter((t) => !q || t.subject.toLowerCase().includes(q))
+    .filter((t) => new Date(t.messages[0].date) >= threshold);
 
   const filteredCount = filtered.length;
   const firstFilteredId = filtered[0]?.id ?? null;
@@ -93,6 +110,20 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
         Showing results for &lsquo;{searchQuery}&rsquo;
       </Alert>
     )}
+    <Box sx={{ display: "flex", justifyContent: "center", py: 1, px: 2 }}>
+      <ToggleButtonGroup
+        value={timeRange}
+        exclusive
+        onChange={(_e, val) => { if (val) setTimeRange(val); }}
+        size="small"
+        fullWidth
+      >
+        <ToggleButton value="1w">week</ToggleButton>
+        <ToggleButton value="1m">month</ToggleButton>
+        <ToggleButton value="1y">year</ToggleButton>
+        <ToggleButton value="100y">ever</ToggleButton>
+      </ToggleButtonGroup>
+    </Box>
     {filtered.length === 0 ? (
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography color="text.secondary">No messages</Typography>
