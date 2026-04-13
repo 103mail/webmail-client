@@ -136,6 +136,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
 
         <TextField
           placeholder="Write your message…"
+          size="small"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           fullWidth
