@@ -195,6 +195,7 @@ export function App() {
     }
   }, [multiPane, activeFilter]);
 
+  const hideAppBar = section === "chat";
   const showMailToolbar = section === "mail";
   const showBackArrow = showMailToolbar && mailView === "thread" && !multiPane;
   const showHamburger = !showBackArrow && layout !== "large" && section === "mail";
@@ -245,7 +246,7 @@ export function App() {
 
   return (
     <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-      <AppBar
+      {!hideAppBar && <AppBar
         position="fixed"
         sx={{ zIndex: (t) => t.zIndex.drawer + 2 }}
       >
@@ -399,7 +400,7 @@ export function App() {
               </MenuItem>
             ))}
         </Menu>
-      </AppBar>
+      </AppBar>}
 
       {/* Section nav — icon rail (medium + large) */}
       {layout !== "mobile" && (
@@ -449,10 +450,12 @@ export function App() {
         sx={{
           flexGrow: 1,
           bgcolor: "background.paper",
-          mt: "64px",
+          mt: hideAppBar ? 0 : "64px",
           mb: layout === "mobile" ? "56px" : 0,
           position: "relative",
-          height: layout === "mobile" ? "calc(100vh - 64px - 56px)" : "calc(100vh - 64px)",
+          height: hideAppBar
+            ? (layout === "mobile" ? "calc(100vh - 56px)" : "100vh")
+            : (layout === "mobile" ? "calc(100vh - 64px - 56px)" : "calc(100vh - 64px)"),
           overflow: "hidden",
           display: "flex",
         }}
@@ -492,7 +495,7 @@ export function App() {
           </Box>
         )}
         {section === "chat" && (
-          <Box sx={{ flexGrow: 1, overflow: "auto" }}>
+          <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
             <ChatView />
           </Box>
         )}
