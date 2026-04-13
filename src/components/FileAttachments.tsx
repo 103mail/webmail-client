@@ -46,7 +46,7 @@ export function FileAttachments({ files, onChange, size = "medium" }: FileAttach
         onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
         sx={{
           position: "relative",
-          px: small ? 1 : 1.5,
+          px: 1.5,
           py: small ? 0.5 : 1,
           border: "1px solid",
           borderColor: dragOver ? "primary.main" : "action.disabled",
@@ -63,7 +63,7 @@ export function FileAttachments({ files, onChange, size = "medium" }: FileAttach
         }}
       >
         {files.length === 0 ? (
-          <Typography variant={small ? "body2" : "body1"} sx={{ color: dragOver ? "primary.main" : "text.secondary" }}>
+          <Typography variant={"body1"} sx={{ color: dragOver ? "primary.main" : "text.secondary" }}>
             {dragOver ? "Drop here" : "Attachments"}
           </Typography>
         ) : (
