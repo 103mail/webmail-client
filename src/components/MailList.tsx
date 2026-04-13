@@ -126,7 +126,6 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
                     checked={checked}
                     tabIndex={-1}
                     disableRipple
-                    size="small"
                   />
                 </ListItemIcon>
               )}
