@@ -32,6 +32,10 @@ import { MailList } from "./components/MailList";
 import { ThreadDetail } from "./components/ThreadDetail";
 import { CalendarView } from "./components/CalendarView";
 import { ChatView } from "./components/ChatView";
+import type { ChatHeaderState } from "./components/ChatView";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { sampleThreads } from "./data/messages";
 import { accounts } from "./data/accounts";
 import type { MailThread } from "./types";
@@ -57,6 +61,7 @@ export function App() {
   const [activeFilter, setActiveFilter] = useState("");
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [moveAnchor, setMoveAnchor] = useState<null | HTMLElement>(null);
+  const [chatHeader, setChatHeader] = useState<ChatHeaderState | null>(null);
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
   const isXl = useMediaQuery(theme.breakpoints.up("xl"));
@@ -162,7 +167,7 @@ export function App() {
     section === "calendar"
       ? "Calendar"
       : section === "chat"
-        ? "Chat"
+        ? chatHeader?.title ?? "Chat"
         : mailView === "compose" && !multiPane
           ? "Compose"
           : mailView === "thread" && !multiPane
@@ -195,13 +200,15 @@ export function App() {
     }
   }, [multiPane, activeFilter]);
 
-  const hideAppBar = section === "chat";
+  const hideAppBar = false;
   const showMailToolbar = section === "mail";
-  const showBackArrow = showMailToolbar && mailView === "thread" && !multiPane;
+  const showChatBack = section === "chat" && Boolean(chatHeader?.onBack);
+  const showBackArrow = showChatBack || (showMailToolbar && mailView === "thread" && !multiPane);
   const showHamburger = !showBackArrow && layout !== "large" && section === "mail";
   const showLogo = !showBackArrow && !showHamburger;
   const showSearchBar = showMailToolbar && (multiPane || mailView === "list");
   const showThreadActions = showMailToolbar && selectedThread && (multiPane ? mailView === "thread" : mailView === "thread");
+  const showChatActions = section === "chat" && chatHeader !== null;
 
   const mailList = (
     <MailList
@@ -286,7 +293,7 @@ export function App() {
                 <IconButton
                   color="inherit"
                   edge="start"
-                  onClick={handleBackToList}
+                  onClick={showChatBack ? chatHeader!.onBack : handleBackToList}
                   sx={{ mr: 1 }}
                   aria-label="back to list"
                 >
@@ -330,6 +337,15 @@ export function App() {
                     "& .MuiInputBase-input": { py: 0.5 },
                   }}
                 />
+              ) : chatHeader?.subtitle ? (
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                  <Typography variant="h6" noWrap sx={{ lineHeight: 1.2 }}>
+                    {title}
+                  </Typography>
+                  <Typography variant="caption" noWrap sx={{ opacity: 0.8, display: "block" }}>
+                    {chatHeader.subtitle}
+                  </Typography>
+                </Box>
               ) : (
                 <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
                   {title}
@@ -355,6 +371,34 @@ export function App() {
                     <SearchIcon />
                   </IconButton>
                 )
+              )}
+
+              {/* Chat actions */}
+              {showChatActions && (
+                <>
+                  <Tooltip title="Search">
+                    <IconButton color="inherit" aria-label="search chat" onClick={chatHeader!.onSearch}>
+                      <SearchIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={chatHeader!.isMuted ? "Unmute" : "Mute"}>
+                    <IconButton color="inherit" aria-label="toggle mute" onClick={chatHeader!.onToggleMute}>
+                      {chatHeader!.isMuted ? <VolumeOffIcon /> : <VolumeUpIcon />}
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete chat">
+                    <IconButton color="inherit" aria-label="delete chat" onClick={chatHeader!.onDelete}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                  {chatHeader!.showInfoButton && (
+                    <Tooltip title="Info">
+                      <IconButton color="inherit" aria-label="show info" onClick={chatHeader!.onToggleInfo}>
+                        <InfoOutlinedIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </>
               )}
 
               {/* Thread actions */}
@@ -496,7 +540,7 @@ export function App() {
         )}
         {section === "chat" && (
           <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
-            <ChatView />
+            <ChatView onHeaderChange={setChatHeader} />
           </Box>
         )}
       </Box>

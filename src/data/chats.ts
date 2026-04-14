@@ -48,6 +48,7 @@ export const sampleChats: Chat[] = [
     unreadCount: 2,
     lastActivity: new Date(Date.now() - 3 * 60_000).toISOString(),
     description: "UX Designer at Acme Corp",
+    accountEmail: "john@103mail.com",
     messages: [
       msg("chat-alice", "alice", "Hey! Have you seen the new mockups?", 120, "read"),
       msg("chat-alice", "me", "Not yet, can you share them?", 115, "read"),
@@ -70,6 +71,7 @@ export const sampleChats: Chat[] = [
     unreadCount: 5,
     lastActivity: new Date(Date.now() - 8 * 60_000).toISOString(),
     description: "Planning and coordination for Project Alpha",
+    accountEmail: "john@103mail.com",
     messages: [
       msg("chat-team", "bob", "Morning everyone! Sprint review at 10am", 180, "read"),
       msg("chat-team", "carol", "I'll be there 👍", 175, "read"),
@@ -92,6 +94,7 @@ export const sampleChats: Chat[] = [
     unreadCount: 0,
     lastActivity: new Date(Date.now() - 45 * 60_000).toISOString(),
     description: "Backend Developer",
+    accountEmail: "john@103mail.com",
     messages: [
       msg("chat-bob", "me", "Hey Bob, is the API ready for testing?", 120, "read"),
       msg("chat-bob", "bob", "Almost! Just fixing one edge case", 90, "read"),
@@ -109,6 +112,7 @@ export const sampleChats: Chat[] = [
     unreadCount: 1,
     lastActivity: new Date(Date.now() - 90 * 60_000).toISOString(),
     description: "Product Manager",
+    accountEmail: "jane@103mail.com",
     messages: [
       msg("chat-carol", "carol", "Hi John! Quick question about the release", 200, "read"),
       msg("chat-carol", "me", "Sure, what's up?", 195, "read"),
@@ -126,6 +130,7 @@ export const sampleChats: Chat[] = [
     unreadCount: 0,
     lastActivity: new Date(Date.now() - 3 * 3600_000).toISOString(),
     description: "Design system discussions and reviews",
+    accountEmail: "jane@103mail.com",
     messages: [
       msg("chat-design", "eve", "New icon set is uploaded to Figma", 240, "read"),
       msg("chat-design", "grace", "Love them! Very clean 🎨", 235, "read"),
@@ -143,6 +148,7 @@ export const sampleChats: Chat[] = [
     unreadCount: 0,
     lastActivity: new Date(Date.now() - 5 * 3600_000).toISOString(),
     description: "DevOps Engineer",
+    accountEmail: "john@103mail.com",
     messages: [
       msg("chat-david", "david", "CI pipeline is green again ✅", 360, "read"),
       msg("chat-david", "me", "Finally! What was the issue?", 355, "read"),
@@ -160,6 +166,7 @@ export const sampleChats: Chat[] = [
     unreadCount: 0,
     lastActivity: new Date(Date.now() - 24 * 3600_000).toISOString(),
     description: "Graphic Designer",
+    accountEmail: "jane@103mail.com",
     messages: [
       msg("chat-eve", "me", "Hey Eve, loved the new logo concepts!", 1500, "read"),
       msg("chat-eve", "eve", "Thanks! Which one do you prefer?", 1490, "read"),
@@ -176,6 +183,7 @@ export const sampleChats: Chat[] = [
     unreadCount: 3,
     lastActivity: new Date(Date.now() - 20 * 60_000).toISOString(),
     description: "Security Analyst",
+    accountEmail: "jane@103mail.com",
     messages: [
       msg("chat-frank", "frank", "Found a vulnerability in the auth flow", 60, "read"),
       msg("chat-frank", "me", "Yikes! What kind?", 55, "read"),

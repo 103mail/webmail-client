@@ -11,29 +11,43 @@ import {
   ListItemAvatar,
   ListItemButton,
   ListItemText,
-  Menu,
-  MenuItem,
   Paper,
   Popover,
   Switch,
-  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
+  alpha,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SendIcon from "@mui/icons-material/Send";
 import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 import DoneIcon from "@mui/icons-material/Done";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
 import GroupIcon from "@mui/icons-material/Group";
 import PersonIcon from "@mui/icons-material/Person";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import CloseIcon from "@mui/icons-material/Close";
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import type { Chat, ChatMessage } from "../types";
-import { sampleChats, participantMap, ownUser } from "../data/chats";
+import { sampleChats, participantMap } from "../data/chats";
 import { accounts } from "../data/accounts";
+
+export interface ChatHeaderState {
+  /** Title/subtitle to surface in the AppBar when the conversation is the only visible pane. */
+  title?: string;
+  subtitle?: string;
+  /** Mobile back navigation from the conversation pane. */
+  onBack?: () => void;
+  isMuted: boolean;
+  onToggleMute: () => void;
+  onDelete: () => void;
+  onSearch: () => void;
+  showInfoButton: boolean;
+  onToggleInfo: () => void;
+}
+
+interface ChatViewProps {
+  onHeaderChange?: (state: ChatHeaderState | null) => void;
+}
 
 /* ── Constants ── */
 const CHAT_LIST_WIDTH = 360;
@@ -93,12 +107,12 @@ function formatDateLabel(iso: string) {
 function StatusIcon({ status }: { status: ChatMessage["status"] }) {
   if (status === "sent") return <DoneIcon sx={{ fontSize: 16, color: "text.disabled" }} />;
   if (status === "delivered") return <DoneAllIcon sx={{ fontSize: 16, color: "text.disabled" }} />;
-  return <DoneAllIcon sx={{ fontSize: 16, color: "#53bdeb" }} />;
+  return <DoneAllIcon sx={{ fontSize: 16, color: "primary.main" }} />;
 }
 
 /* ══════════════════════════════════════════════════════ */
 
-export function ChatView() {
+export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
   const isXl = useMediaQuery(theme.breakpoints.up("xl"));
@@ -110,12 +124,15 @@ export function ChatView() {
   const [showGroups, setShowGroups] = useState(true);
   const [draft, setDraft] = useState("");
   const [emojiAnchor, setEmojiAnchor] = useState<HTMLElement | null>(null);
-  const [activeAccount, setActiveAccount] = useState(accounts[0]);
-  const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
+  const [collapsedAccounts, setCollapsedAccounts] = useState<Set<string>>(new Set());
+  const [mutedChats, setMutedChats] = useState<Set<string>>(new Set());
   const messagesEnd = useRef<HTMLDivElement>(null);
+  const unreadSnapshot = useRef<Record<string, number>>({});
 
   const multiPane = isMd;
   const threePane = isXl;
+  /* The conversation pane is the only visible pane when we're in mobile mode and a chat is open. */
+  const conversationOnly = !multiPane && selectedChatId !== null && !showInfo;
 
   /* filtered + sorted chat list */
   const visibleChats = useMemo(() => {
@@ -131,7 +148,11 @@ export function ChatView() {
   /* auto-select first chat on desktop */
   useEffect(() => {
     if (multiPane && !selectedChatId && visibleChats.length > 0) {
-      setSelectedChatId(visibleChats[0].id);
+      const chat = visibleChats[0];
+      if (chat.unreadCount > 0) {
+        unreadSnapshot.current[chat.id] = chat.unreadCount;
+      }
+      setSelectedChatId(chat.id);
     }
   }, [multiPane, selectedChatId, visibleChats]);
 
@@ -153,9 +174,49 @@ export function ChatView() {
   }, [selectedChatId]);
 
   const handleSelectChat = useCallback((chatId: string) => {
+    const chat = chats.find((c) => c.id === chatId);
+    if (chat && chat.unreadCount > 0) {
+      unreadSnapshot.current[chatId] = chat.unreadCount;
+    } else {
+      delete unreadSnapshot.current[chatId];
+    }
     setSelectedChatId(chatId);
     setShowInfo(false);
-  }, []);
+  }, [chats]);
+
+  /* Publish chat header state to the host (AppBar) */
+  useEffect(() => {
+    if (!onHeaderChange) return;
+    if (!selectedChat) {
+      onHeaderChange(null);
+      return;
+    }
+    const subtitle = selectedChat.isGroup
+      ? `${selectedChat.participants.length} participants`
+      : participantMap.get(selectedChat.participants.find((p) => p !== "me") ?? "")?.status ?? "";
+    onHeaderChange({
+      title: conversationOnly ? selectedChat.name : undefined,
+      subtitle: conversationOnly ? subtitle : undefined,
+      onBack: !multiPane
+        ? showInfo
+          ? () => setShowInfo(false)
+          : () => setSelectedChatId(null)
+        : undefined,
+      isMuted: mutedChats.has(selectedChat.id),
+      onToggleMute: () =>
+        setMutedChats((prev) => {
+          const next = new Set(prev);
+          if (next.has(selectedChat.id)) next.delete(selectedChat.id);
+          else next.add(selectedChat.id);
+          return next;
+        }),
+      onDelete: () => {},
+      onSearch: () => {},
+      showInfoButton: !threePane,
+      onToggleInfo: () => setShowInfo((v) => !v),
+    });
+    return () => onHeaderChange(null);
+  }, [onHeaderChange, selectedChat, conversationOnly, multiPane, threePane, showInfo, mutedChats]);
 
   const handleSend = () => {
     if (!draft.trim() || !selectedChatId) return;
@@ -185,43 +246,30 @@ export function ChatView() {
     }
   };
 
+  const toggleAccount = (email: string) => {
+    setCollapsedAccounts((prev) => {
+      const next = new Set(prev);
+      if (next.has(email)) next.delete(email);
+      else next.add(email);
+      return next;
+    });
+  };
+
+  /* Group chats by account, preserving the sort order within each group */
+  const chatsByAccount = useMemo(() => {
+    const map = new Map<string, Chat[]>();
+    for (const acc of accounts) map.set(acc.email, []);
+    for (const chat of visibleChats) {
+      if (!map.has(chat.accountEmail)) map.set(chat.accountEmail, []);
+      map.get(chat.accountEmail)!.push(chat);
+    }
+    // Only surface accounts that actually own chats matching current filters
+    return Array.from(map.entries()).filter(([, list]) => list.length > 0);
+  }, [visibleChats]);
+
   /* ── Chat list pane ── */
   const chatListPane = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "background.paper" }}>
-      {/* Header: own profile */}
-      <Box sx={{ px: 2, py: 1.5, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600 }}>
-              {ownUser.name}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {activeAccount.email}
-            </Typography>
-          </Box>
-          <Tooltip title="Switch account">
-            <IconButton size="small" onClick={(e) => setAccountAnchor(e.currentTarget)} aria-label="switch account">
-              <SwapHorizIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Box>
-      <Menu
-        anchorEl={accountAnchor}
-        open={Boolean(accountAnchor)}
-        onClose={() => setAccountAnchor(null)}
-      >
-        {accounts.map((acc) => (
-          <MenuItem
-            key={acc.email}
-            selected={acc.email === activeAccount.email}
-            onClick={() => { setActiveAccount(acc); setAccountAnchor(null); }}
-          >
-            {acc.email}
-          </MenuItem>
-        ))}
-      </Menu>
-
       {/* Filters */}
       <Box sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "divider" }}>
         <Chip
@@ -237,78 +285,105 @@ export function ChatView() {
         </Box>
       </Box>
 
-      {/* Chat list */}
+      {/* Chat list — grouped by account */}
       <List sx={{ flexGrow: 1, overflow: "auto", py: 0 }}>
-        {visibleChats.length === 0 && (
+        {chatsByAccount.length === 0 && (
           <Box sx={{ textAlign: "center", py: 4, color: "text.secondary" }}>
             <Typography variant="body2">No chats found</Typography>
           </Box>
         )}
-        {visibleChats.map((chat) => {
-          const lastMsg = chat.messages[chat.messages.length - 1];
-          const senderName = lastMsg?.fromId === "me" ? "You" : (participantMap.get(lastMsg?.fromId)?.name.split(" ")[0] ?? "");
-          const selected = chat.id === selectedChatId;
+        {chatsByAccount.map(([email, list]) => {
+          const collapsed = collapsedAccounts.has(email);
+          const unread = list.reduce((n, c) => n + (c.unreadCount > 0 ? 1 : 0), 0);
           return (
-            <ListItemButton
-              key={chat.id}
-              selected={selected}
-              onClick={() => handleSelectChat(chat.id)}
-              sx={{
-                py: 1.2,
-                px: 2,
-                borderBottom: "1px solid",
-                borderColor: "divider",
-                "&.Mui-selected": { bgcolor: "action.selected" },
-              }}
-            >
-              <ListItemAvatar>
-                <Badge
-                  badgeContent={chat.unreadCount}
-                  color="primary"
-                  overlap="circular"
-                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                >
-                  <Avatar sx={{ bgcolor: avatarColor(chat.name), width: 48, height: 48 }}>
-                    {chat.isGroup ? <GroupIcon /> : getInitials(chat.name)}
-                  </Avatar>
-                </Badge>
-              </ListItemAvatar>
-              <ListItemText
-                sx={{ ml: 0.5 }}
-                primary={
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Typography
-                      variant="body1"
-                      noWrap
-                      sx={{ flexGrow: 1, mr: 1, fontWeight: chat.unreadCount > 0 ? 700 : 400 }}
-                    >
-                      {chat.name}
-                    </Typography>
-                    <Typography variant="caption" color={chat.unreadCount > 0 ? "primary" : "text.secondary"} sx={{ whiteSpace: "nowrap" }}>
-                      {formatTime(chat.lastActivity)}
-                    </Typography>
-                  </Box>
-                }
-                secondary={
-                  <Typography
-                    variant="body2"
-                    noWrap
-                    color={chat.unreadCount > 0 ? "text.primary" : "text.secondary"}
-                    sx={{ fontWeight: chat.unreadCount > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", display: "block" }}
-                    component="span"
+            <Box key={email}>
+              <ListItemButton
+                onClick={() => toggleAccount(email)}
+                sx={{
+                  py: 0.6,
+                  px: 2,
+                  bgcolor: "grey.100",
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                  "&:hover": { bgcolor: "grey.200" },
+                }}
+              >
+                {collapsed ? <ChevronRightIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                <Typography variant="subtitle2" noWrap sx={{ ml: 0.5, flexGrow: 1, fontWeight: 600 }}>
+                  {email}
+                </Typography>
+                {unread > 0 && (
+                  <Badge badgeContent={unread} color="primary" sx={{ mr: 1.2 }} />
+                )}
+              </ListItemButton>
+              {!collapsed && list.map((chat) => {
+                const lastMsg = chat.messages[chat.messages.length - 1];
+                const senderName = lastMsg?.fromId === "me" ? "You" : (participantMap.get(lastMsg?.fromId)?.name.split(" ")[0] ?? "");
+                const selected = chat.id === selectedChatId;
+                return (
+                  <ListItemButton
+                    key={chat.id}
+                    selected={selected}
+                    onClick={() => handleSelectChat(chat.id)}
+                    sx={{
+                      py: 1.2,
+                      px: 2,
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      "&.Mui-selected": { bgcolor: "action.selected" },
+                    }}
                   >
-                    {lastMsg && (
-                      <>
-                        {lastMsg.fromId === "me" && <StatusIcon status={lastMsg.status} />}
-                        {" "}
-                        {chat.isGroup && `${senderName}: `}
-                        {lastMsg.body}
-                      </>
-                    )}
-                  </Typography>
-                }
-              />
-            </ListItemButton>
+                    <ListItemAvatar>
+                      <Badge
+                        badgeContent={chat.unreadCount}
+                        color="primary"
+                        overlap="circular"
+                        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                      >
+                        <Avatar sx={{ bgcolor: avatarColor(chat.name), width: 48, height: 48 }}>
+                          {chat.isGroup ? <GroupIcon /> : getInitials(chat.name)}
+                        </Avatar>
+                      </Badge>
+                    </ListItemAvatar>
+                    <ListItemText
+                      sx={{ ml: 0.5 }}
+                      primary={
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <Typography
+                            variant="body1"
+                            noWrap
+                            sx={{ flexGrow: 1, mr: 1, fontWeight: chat.unreadCount > 0 ? 700 : 400 }}
+                          >
+                            {chat.name}
+                          </Typography>
+                          <Typography variant="caption" color={chat.unreadCount > 0 ? "primary" : "text.secondary"} sx={{ whiteSpace: "nowrap" }}>
+                            {formatTime(chat.lastActivity)}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <Typography
+                          variant="body2"
+                          noWrap
+                          color={chat.unreadCount > 0 ? "text.primary" : "text.secondary"}
+                          sx={{ fontWeight: chat.unreadCount > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", display: "block" }}
+                          component="span"
+                        >
+                          {lastMsg && (
+                            <>
+                              {lastMsg.fromId === "me" && <StatusIcon status={lastMsg.status} />}
+                              {" "}
+                              {chat.isGroup && `${senderName}: `}
+                              {lastMsg.body}
+                            </>
+                          )}
+                        </Typography>
+                      }
+                    />
+                  </ListItemButton>
+                );
+              })}
+            </Box>
           );
         })}
       </List>
@@ -317,69 +392,42 @@ export function ChatView() {
 
   /* ── Conversation pane ── */
   const conversationPane = selectedChat ? (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "#efeae2" }}>
-      {/* Conversation header */}
-      <Box
-        sx={{
-          px: 1.5,
-          py: 1,
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          bgcolor: "background.paper",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        {!multiPane && (
-          <IconButton size="small" onClick={() => setSelectedChatId(null)}>
-            <ArrowBackIcon />
-          </IconButton>
-        )}
-        <Avatar sx={{ bgcolor: avatarColor(selectedChat.name), width: 40, height: 40 }}>
-          {selectedChat.isGroup ? <GroupIcon /> : getInitials(selectedChat.name)}
-        </Avatar>
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600 }}>
-            {selectedChat.name}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
-            {selectedChat.isGroup
-              ? `${selectedChat.participants.length} participants`
-              : participantMap.get(selectedChat.participants.find((p) => p !== "me") ?? "")?.status ?? ""}
-          </Typography>
-        </Box>
-        {!threePane && !showInfo && (
-          <Tooltip title="Info">
-            <IconButton size="small" onClick={() => setShowInfo(true)}>
-              <InfoOutlinedIcon />
-            </IconButton>
-          </Tooltip>
-        )}
-      </Box>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "grey.100" }}>
 
       {/* Messages */}
       <Box sx={{ flexGrow: 1, overflow: "auto", px: { xs: 1, md: 3 }, py: 1 }}>
-        {selectedChat.messages.map((msg, i) => {
+        {(() => {
+          const snap = unreadSnapshot.current[selectedChat.id] ?? 0;
+          const unreadStart = snap > 0 ? selectedChat.messages.length - snap : -1;
+          return selectedChat.messages.map((msg, i) => {
           const isOwn = msg.fromId === "me";
           const sender = participantMap.get(msg.fromId);
           const showSender = selectedChat.isGroup && !isOwn;
           const showDate = shouldShowDateSeparator(selectedChat.messages[i - 1], msg);
           return (
             <Box key={msg.id}>
+              {i === unreadStart && (
+                <Box sx={{ display: "flex", alignItems: "center", my: 1.5, gap: 1.5 }}>
+                  <Divider sx={{ flex: 1, borderColor: "primary.main" }} />
+                  <Typography variant="caption" sx={{ color: "primary.main", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    New messages
+                  </Typography>
+                  <Divider sx={{ flex: 1, borderColor: "primary.main" }} />
+                </Box>
+              )}
               {showDate && (
                 <Box sx={{ textAlign: "center", my: 1.5 }}>
-                  <Chip label={formatDateLabel(msg.timestamp)} size="small" sx={{ bgcolor: "rgba(255,255,255,0.9)", fontSize: 12 }} />
+                  <Chip label={formatDateLabel(msg.timestamp)} size="small" sx={{ bgcolor: "background.paper", fontSize: 12 }} />
                 </Box>
               )}
               <Box sx={{ display: "flex", justifyContent: isOwn ? "flex-end" : "flex-start", mb: 0.5 }}>
                 <Paper
-                  elevation={0}
+                  variant="outlined"
                   sx={{
                     px: 1.5,
                     py: 0.8,
                     maxWidth: { xs: "85%", md: "65%" },
-                    bgcolor: isOwn ? "#d9fdd3" : "#ffffff",
+                    bgcolor: isOwn ? alpha(theme.palette.primary.main, 0.08) : "background.paper",
                     borderRadius: 2,
                     borderTopLeftRadius: isOwn ? 8 : 0,
                     borderTopRightRadius: isOwn ? 0 : 8,
@@ -404,7 +452,8 @@ export function ChatView() {
               </Box>
             </Box>
           );
-        })}
+        });
+        })()}
         <div ref={messagesEnd} />
       </Box>
 
@@ -454,7 +503,7 @@ export function ChatView() {
       </Box>
     </Box>
   ) : (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", bgcolor: "#efeae2", color: "text.secondary" }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", bgcolor: "grey.100", color: "text.secondary" }}>
       <Box sx={{ textAlign: "center" }}>
         <PersonIcon sx={{ fontSize: 64, mb: 1, opacity: 0.4 }} />
         <Typography>Select a chat to start messaging</Typography>
@@ -464,19 +513,7 @@ export function ChatView() {
 
   /* ── Info / profile panel (third pane) ── */
   const infoPane = selectedChat ? (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "background.paper", borderLeft: "1px solid", borderColor: "divider" }}>
-      {/* Header */}
-      <Box sx={{ px: 2, py: 1.5, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "divider" }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, flexGrow: 1 }}>
-          {selectedChat.isGroup ? "Group info" : "Contact info"}
-        </Typography>
-        {!threePane && (
-          <IconButton size="small" onClick={() => setShowInfo(false)}>
-            <CloseIcon />
-          </IconButton>
-        )}
-      </Box>
-
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "background.paper", borderLeft: "1px solid", borderColor: "divider", overflow: "auto" }}>
       {/* Avatar + name */}
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 3, gap: 1 }}>
         <Avatar sx={{ bgcolor: avatarColor(selectedChat.name), width: 80, height: 80, fontSize: 32 }}>

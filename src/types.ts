@@ -69,4 +69,5 @@ export interface Chat {
   unreadCount: number;
   lastActivity: string;       // ISO date string
   description?: string;       // group description or contact bio
+  accountEmail: string;       // which account owns this chat
 }
