@@ -208,7 +208,9 @@ export function App() {
   const showLogo = !showBackArrow && !showHamburger;
   const showSearchBar = showMailToolbar && (multiPane || mailView === "list");
   const showThreadActions = showMailToolbar && selectedThread && (multiPane ? mailView === "thread" : mailView === "thread");
-  const showChatActions = section === "chat" && chatHeader !== null;
+  const showChatConvoActions = section === "chat" && chatHeader?.onToggleMute !== undefined;
+  const showChatSearchBar = section === "chat" && Boolean(chatHeader?.showSearchButton);
+  const chatSearching = showChatSearchBar && Boolean(chatHeader?.searching);
 
   const mailList = (
     <MailList
@@ -337,6 +339,25 @@ export function App() {
                     "& .MuiInputBase-input": { py: 0.5 },
                   }}
                 />
+              ) : chatSearching ? (
+                <InputBase
+                  placeholder="Search chats…"
+                  value={chatHeader!.searchInput}
+                  onChange={(e) => chatHeader!.onSearchInputChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      chatHeader!.onSearchCommit();
+                    } else if (e.key === "Escape") {
+                      chatHeader!.onSearchCancel();
+                    }
+                  }}
+                  autoFocus
+                  sx={{
+                    flexGrow: 1,
+                    color: "inherit",
+                    "& .MuiInputBase-input": { py: 0.5 },
+                  }}
+                />
               ) : chatHeader?.subtitle ? (
                 <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                   <Typography variant="h6" noWrap sx={{ lineHeight: 1.2 }}>
@@ -372,15 +393,29 @@ export function App() {
                   </IconButton>
                 )
               )}
+              {showChatSearchBar && (
+                chatSearching ? (
+                  <IconButton
+                    color="inherit"
+                    aria-label="close search"
+                    onClick={chatHeader!.onSearchCancel}
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                ) : (
+                  <IconButton
+                    color="inherit"
+                    aria-label="search"
+                    onClick={chatHeader!.onSearchStart}
+                  >
+                    <SearchIcon />
+                  </IconButton>
+                )
+              )}
 
               {/* Chat actions */}
-              {showChatActions && (
+              {showChatConvoActions && !chatSearching && (
                 <>
-                  <Tooltip title="Search">
-                    <IconButton color="inherit" aria-label="search chat" onClick={chatHeader!.onSearch}>
-                      <SearchIcon />
-                    </IconButton>
-                  </Tooltip>
                   <Tooltip title={chatHeader!.isMuted ? "Unmute" : "Mute"}>
                     <IconButton color="inherit" aria-label="toggle mute" onClick={chatHeader!.onToggleMute}>
                       {chatHeader!.isMuted ? <VolumeOffIcon /> : <VolumeUpIcon />}

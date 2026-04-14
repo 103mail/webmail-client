@@ -37,12 +37,20 @@ export interface ChatHeaderState {
   subtitle?: string;
   /** Mobile back navigation from the conversation pane. */
   onBack?: () => void;
-  isMuted: boolean;
-  onToggleMute: () => void;
-  onDelete: () => void;
-  onSearch: () => void;
-  showInfoButton: boolean;
-  onToggleInfo: () => void;
+  /** Search state: when `searching` is true the AppBar should render the search InputBase. */
+  showSearchButton: boolean;
+  searching: boolean;
+  searchInput: string;
+  onSearchStart: () => void;
+  onSearchInputChange: (value: string) => void;
+  onSearchCommit: () => void;
+  onSearchCancel: () => void;
+  /** Conversation actions — only populated when a chat is selected. */
+  isMuted?: boolean;
+  onToggleMute?: () => void;
+  onDelete?: () => void;
+  showInfoButton?: boolean;
+  onToggleInfo?: () => void;
 }
 
 interface ChatViewProps {
@@ -126,6 +134,9 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const [emojiAnchor, setEmojiAnchor] = useState<HTMLElement | null>(null);
   const [collapsedAccounts, setCollapsedAccounts] = useState<Set<string>>(new Set());
   const [mutedChats, setMutedChats] = useState<Set<string>>(new Set());
+  const [searching, setSearching] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
   const messagesEnd = useRef<HTMLDivElement>(null);
   const unreadSnapshot = useRef<Record<string, number>>({});
 
@@ -139,9 +150,17 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     let list = [...chats];
     if (filterUnread) list = list.filter((c) => c.unreadCount > 0);
     if (!showGroups) list = list.filter((c) => !c.isGroup);
+    if (activeFilter) {
+      const q = activeFilter.toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.messages.some((m) => m.body.toLowerCase().includes(q)),
+      );
+    }
     list.sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
     return list;
-  }, [chats, filterUnread, showGroups]);
+  }, [chats, filterUnread, showGroups, activeFilter]);
 
   const selectedChat = chats.find((c) => c.id === selectedChatId) ?? null;
 
@@ -187,14 +206,35 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   /* Publish chat header state to the host (AppBar) */
   useEffect(() => {
     if (!onHeaderChange) return;
+    /* Chat list is on screen whenever we're multi-pane or no chat is selected. */
+    const chatListVisible = multiPane || !selectedChatId;
+    const subtitle = selectedChat
+      ? selectedChat.isGroup
+        ? `${selectedChat.participants.length} participants`
+        : participantMap.get(selectedChat.participants.find((p) => p !== "me") ?? "")?.status ?? ""
+      : "";
+    const base = {
+      showSearchButton: chatListVisible,
+      searching,
+      searchInput,
+      onSearchStart: () => setSearching(true),
+      onSearchInputChange: (v: string) => setSearchInput(v),
+      onSearchCommit: () => {
+        setActiveFilter(searchInput.trim());
+        setSearching(false);
+      },
+      onSearchCancel: () => {
+        setSearching(false);
+        setSearchInput("");
+        setActiveFilter("");
+      },
+    };
     if (!selectedChat) {
-      onHeaderChange(null);
+      onHeaderChange(base);
       return;
     }
-    const subtitle = selectedChat.isGroup
-      ? `${selectedChat.participants.length} participants`
-      : participantMap.get(selectedChat.participants.find((p) => p !== "me") ?? "")?.status ?? "";
     onHeaderChange({
+      ...base,
       title: conversationOnly ? selectedChat.name : undefined,
       subtitle: conversationOnly ? subtitle : undefined,
       onBack: !multiPane
@@ -211,12 +251,22 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           return next;
         }),
       onDelete: () => {},
-      onSearch: () => {},
       showInfoButton: !threePane,
       onToggleInfo: () => setShowInfo((v) => !v),
     });
     return () => onHeaderChange(null);
-  }, [onHeaderChange, selectedChat, conversationOnly, multiPane, threePane, showInfo, mutedChats]);
+  }, [
+    onHeaderChange,
+    selectedChat,
+    selectedChatId,
+    conversationOnly,
+    multiPane,
+    threePane,
+    showInfo,
+    mutedChats,
+    searching,
+    searchInput,
+  ]);
 
   const handleSend = () => {
     if (!draft.trim() || !selectedChatId) return;
@@ -271,7 +321,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const chatListPane = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "background.paper" }}>
       {/* Filters */}
-      <Box sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "divider" }}>
+      <Box sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "divider", flexWrap: "wrap" }}>
         <Chip
           label="Unread"
           size="small"
@@ -279,6 +329,14 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           variant={filterUnread ? "filled" : "outlined"}
           onClick={() => setFilterUnread((v) => !v)}
         />
+        {activeFilter && (
+          <Chip
+            label={`“${activeFilter}”`}
+            size="small"
+            color="primary"
+            onDelete={() => { setActiveFilter(""); setSearchInput(""); }}
+          />
+        )}
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: "auto" }}>
           <GroupIcon sx={{ fontSize: 18, color: showGroups ? "primary.main" : "text.disabled" }} />
           <Switch size="small" checked={showGroups} onChange={(_, v) => setShowGroups(v)} />
