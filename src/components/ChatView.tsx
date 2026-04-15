@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
+  Alert,
   Avatar,
   Badge,
   Box,
@@ -13,7 +14,6 @@ import {
   ListItemText,
   Paper,
   Popover,
-  Switch,
   Typography,
   useMediaQuery,
   useTheme,
@@ -27,6 +27,7 @@ import GroupIcon from "@mui/icons-material/Group";
 import PersonIcon from "@mui/icons-material/Person";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import CloseIcon from "@mui/icons-material/Close";
 import type { Chat, ChatMessage } from "../types";
 import { sampleChats, participantMap } from "../data/chats";
 import { accounts } from "../data/accounts";
@@ -142,8 +143,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
 
   const multiPane = isMd;
   const threePane = isXl;
-  /* The conversation pane is the only visible pane when we're in mobile mode and a chat is open. */
-  const conversationOnly = !multiPane && selectedChatId !== null && !showInfo;
 
   /* filtered + sorted chat list */
   const visibleChats = useMemo(() => {
@@ -208,11 +207,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     if (!onHeaderChange) return;
     /* Chat list is on screen whenever we're multi-pane or no chat is selected. */
     const chatListVisible = multiPane || !selectedChatId;
-    const subtitle = selectedChat
-      ? selectedChat.isGroup
-        ? `${selectedChat.participants.length} participants`
-        : participantMap.get(selectedChat.participants.find((p) => p !== "me") ?? "")?.status ?? ""
-      : "";
     const base = {
       showSearchButton: chatListVisible,
       searching,
@@ -233,10 +227,13 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
       onHeaderChange(base);
       return;
     }
+    const subtitle = selectedChat.isGroup
+      ? `${selectedChat.participants.length} participants`
+      : participantMap.get(selectedChat.participants.find((p) => p !== "me") ?? "")?.status ?? "";
     onHeaderChange({
       ...base,
-      title: conversationOnly ? selectedChat.name : undefined,
-      subtitle: conversationOnly ? subtitle : undefined,
+      title: selectedChat.name,
+      subtitle,
       onBack: !multiPane
         ? showInfo
           ? () => setShowInfo(false)
@@ -259,7 +256,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     onHeaderChange,
     selectedChat,
     selectedChatId,
-    conversationOnly,
     multiPane,
     threePane,
     showInfo,
@@ -329,19 +325,33 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           variant={filterUnread ? "filled" : "outlined"}
           onClick={() => setFilterUnread((v) => !v)}
         />
-        {activeFilter && (
-          <Chip
-            label={`“${activeFilter}”`}
-            size="small"
-            color="primary"
-            onDelete={() => { setActiveFilter(""); setSearchInput(""); }}
-          />
-        )}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: "auto" }}>
-          <GroupIcon sx={{ fontSize: 18, color: showGroups ? "primary.main" : "text.disabled" }} />
-          <Switch size="small" checked={showGroups} onChange={(_, v) => setShowGroups(v)} />
-        </Box>
+        <Chip
+          label="1 on 1"
+          size="small"
+          color={!showGroups ? "primary" : "default"}
+          variant={!showGroups ? "filled" : "outlined"}
+          onClick={() => setShowGroups((v) => !v)}
+        />
       </Box>
+
+      {activeFilter && (
+        <Alert
+          severity="warning"
+          sx={{ borderRadius: 0 }}
+          action={
+            <IconButton
+              size="small"
+              color="inherit"
+              onClick={() => { setActiveFilter(""); setSearchInput(""); }}
+              aria-label="clear filter"
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          }
+        >
+          Showing results for &lsquo;{activeFilter}&rsquo;
+        </Alert>
+      )}
 
       {/* Chat list — grouped by account */}
       <List sx={{ flexGrow: 1, overflow: "auto", py: 0 }}>

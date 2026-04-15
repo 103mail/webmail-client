@@ -70,6 +70,7 @@ export function App() {
   const multiPane = layout !== "mobile";
   const selectionMode = checkedIds.size > 0;
   const currentAccount = accounts.find((a) => a.folders.some((f) => f.id === selectedFolder));
+  const currentFolder = currentAccount?.folders.find((f) => f.id === selectedFolder);
   const canMove = (currentAccount?.folders.length ?? 0) > 1;
 
   const folderThreads = useMemo(
@@ -172,7 +173,16 @@ export function App() {
           ? "Compose"
           : mailView === "thread" && !multiPane
             ? ""
-            : "Inbox";
+            : currentFolder?.name ?? "Inbox";
+
+  const mailSubtitle =
+    section === "mail" &&
+    layout !== "large" &&
+    mailView !== "compose" &&
+    !(layout === "mobile" && mailView === "thread") &&
+    currentAccount
+      ? currentAccount.email
+      : null;
 
   const sidebarDesktop = (
     <Sidebar
@@ -358,18 +368,14 @@ export function App() {
                     "& .MuiInputBase-input": { py: 0.5 },
                   }}
                 />
-              ) : chatHeader?.subtitle ? (
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                  <Typography variant="h6" noWrap sx={{ lineHeight: 1.2 }}>
-                    {title}
-                  </Typography>
-                  <Typography variant="caption" noWrap sx={{ opacity: 0.8, display: "block" }}>
-                    {chatHeader.subtitle}
-                  </Typography>
-                </Box>
               ) : (
                 <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
                   {title}
+                  {(mailSubtitle || chatHeader?.subtitle) && (
+                    <Box component="span" sx={{ ml: 1, fontSize: 13, fontWeight: 400, opacity: 0.8 }}>
+                      {mailSubtitle ?? chatHeader?.subtitle}
+                    </Box>
+                  )}
                 </Typography>
               )}
 
