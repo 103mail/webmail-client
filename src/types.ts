@@ -42,6 +42,21 @@ export interface MailThread {
 
 export type ChatMessageStatus = "sent" | "delivered" | "read";
 
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  size: string;
+  type: string;               // MIME type
+}
+
+export interface ChatImage {
+  id: string;
+  url: string;                // image URL (http or object URL)
+  width?: number;
+  height?: number;
+  caption?: string;
+}
+
 export interface ChatMessage {
   id: string;
   chatId: string;
@@ -49,6 +64,8 @@ export interface ChatMessage {
   body: string;
   timestamp: string;          // ISO date string
   status: ChatMessageStatus;  // for outgoing messages
+  attachments?: ChatAttachment[];
+  images?: ChatImage[];
 }
 
 export interface ChatParticipant {

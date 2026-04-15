@@ -28,7 +28,13 @@ import PersonIcon from "@mui/icons-material/Person";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
-import type { Chat, ChatMessage } from "../types";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+import ImageIcon from "@mui/icons-material/Image";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import DescriptionIcon from "@mui/icons-material/Description";
+import DownloadIcon from "@mui/icons-material/Download";
+import type { Chat, ChatAttachment, ChatImage, ChatMessage } from "../types";
 import { sampleChats, participantMap } from "../data/chats";
 import { accounts } from "../data/accounts";
 
@@ -112,6 +118,101 @@ function formatDateLabel(iso: string) {
   return d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 }
 
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentIcon(type: string) {
+  if (type.includes("pdf")) return <PictureAsPdfIcon fontSize="small" />;
+  if (type.includes("word") || type.includes("document")) return <DescriptionIcon fontSize="small" />;
+  return <InsertDriveFileIcon fontSize="small" />;
+}
+
+function ImageGrid({ images, onOpen }: { images: ChatImage[]; onOpen: (url: string) => void }) {
+  const count = images.length;
+  const cols = count === 1 ? 1 : count === 2 ? 2 : count === 3 ? 3 : 2;
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gap: 0.5,
+        mt: 0.5,
+        borderRadius: 1.5,
+        overflow: "hidden",
+      }}
+    >
+      {images.map((img) => (
+        <Box key={img.id} sx={{ position: "relative" }}>
+          <Box
+            component="img"
+            src={img.url}
+            alt={img.caption ?? ""}
+            loading="lazy"
+            onClick={() => onOpen(img.url)}
+            sx={{
+              width: "100%",
+              aspectRatio: count === 1 ? "16/10" : "1 / 1",
+              objectFit: "cover",
+              display: "block",
+              cursor: "zoom-in",
+              bgcolor: "grey.200",
+            }}
+          />
+          {img.caption && (
+            <Typography
+              variant="caption"
+              sx={{
+                position: "absolute",
+                bottom: 0, left: 0, right: 0,
+                px: 1, py: 0.3,
+                color: "common.white",
+                background: "linear-gradient(transparent, rgba(0,0,0,0.55))",
+                fontSize: 11,
+              }}
+            >
+              {img.caption}
+            </Typography>
+          )}
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+function AttachmentList({ attachments }: { attachments: ChatAttachment[] }) {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, mt: 0.5 }}>
+      {attachments.map((att) => (
+        <Box
+          key={att.id}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1,
+            py: 0.6,
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1,
+            bgcolor: "background.paper",
+            minWidth: 220,
+          }}
+        >
+          <Box sx={{ color: "primary.main", display: "flex" }}>{attachmentIcon(att.type)}</Box>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>{att.name}</Typography>
+            <Typography variant="caption" color="text.secondary">{att.size}</Typography>
+          </Box>
+          <IconButton size="small"><DownloadIcon fontSize="small" /></IconButton>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
 /* ── Status check marks ── */
 function StatusIcon({ status }: { status: ChatMessage["status"] }) {
   if (status === "sent") return <DoneIcon sx={{ fontSize: 16, color: "text.disabled" }} />;
@@ -133,6 +234,11 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const [showGroups, setShowGroups] = useState(true);
   const [draft, setDraft] = useState("");
   const [emojiAnchor, setEmojiAnchor] = useState<HTMLElement | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [collapsedAccounts, setCollapsedAccounts] = useState<Set<string>>(new Set());
   const [mutedChats, setMutedChats] = useState<Set<string>>(new Set());
   const [searching, setSearching] = useState(false);
@@ -265,7 +371,9 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   ]);
 
   const handleSend = () => {
-    if (!draft.trim() || !selectedChatId) return;
+    if (!selectedChatId) return;
+    const hasContent = draft.trim() || pendingAttachments.length > 0 || pendingImages.length > 0;
+    if (!hasContent) return;
     const now = new Date().toISOString();
     const newMsg: ChatMessage = {
       id: `msg-new-${Date.now()}`,
@@ -274,6 +382,8 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
       body: draft.trim(),
       timestamp: now,
       status: "sent",
+      ...(pendingAttachments.length > 0 ? { attachments: pendingAttachments } : {}),
+      ...(pendingImages.length > 0 ? { images: pendingImages } : {}),
     };
     setChats((prev) =>
       prev.map((c) =>
@@ -283,6 +393,28 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
       ),
     );
     setDraft("");
+    setPendingAttachments([]);
+    setPendingImages([]);
+  };
+
+  const handleAttachFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const next: ChatAttachment[] = Array.from(files).map((f) => ({
+      id: `att-new-${Date.now()}-${f.name}`,
+      name: f.name,
+      size: formatBytes(f.size),
+      type: f.type || "application/octet-stream",
+    }));
+    setPendingAttachments((prev) => [...prev, ...next]);
+  };
+
+  const handleAttachImages = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const next: ChatImage[] = Array.from(files).map((f) => ({
+      id: `img-new-${Date.now()}-${f.name}`,
+      url: URL.createObjectURL(f),
+    }));
+    setPendingImages((prev) => [...prev, ...next]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -437,14 +569,19 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                           sx={{ fontWeight: chat.unreadCount > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", display: "block" }}
                           component="span"
                         >
-                          {lastMsg && (
-                            <>
-                              {lastMsg.fromId === "me" && <StatusIcon status={lastMsg.status} />}
-                              {" "}
-                              {chat.isGroup && `${senderName}: `}
-                              {lastMsg.body}
-                            </>
-                          )}
+                          {lastMsg && (() => {
+                            const preview = lastMsg.body
+                              || (lastMsg.images?.length ? `📷 ${lastMsg.images.length} photo${lastMsg.images.length > 1 ? "s" : ""}` : "")
+                              || (lastMsg.attachments?.length ? `📎 ${lastMsg.attachments[0].name}` : "");
+                            return (
+                              <>
+                                {lastMsg.fromId === "me" && <StatusIcon status={lastMsg.status} />}
+                                {" "}
+                                {chat.isGroup && `${senderName}: `}
+                                {preview}
+                              </>
+                            );
+                          })()}
                         </Typography>
                       }
                     />
@@ -507,9 +644,17 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                       {sender?.name}
                     </Typography>
                   )}
-                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                    {msg.body}
-                  </Typography>
+                  {msg.body && (
+                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                      {msg.body}
+                    </Typography>
+                  )}
+                  {msg.images && msg.images.length > 0 && (
+                    <ImageGrid images={msg.images} onOpen={setLightbox} />
+                  )}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <AttachmentList attachments={msg.attachments} />
+                  )}
                   <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 0.3, mt: 0.3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
                       {formatMessageTime(msg.timestamp)}
@@ -525,8 +670,59 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
         <div ref={messagesEnd} />
       </Box>
 
+      {/* Pending attachments / images preview */}
+      {(pendingAttachments.length > 0 || pendingImages.length > 0) && (
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, px: 1.5, py: 1, bgcolor: "background.paper", borderTop: "1px solid", borderColor: "divider" }}>
+          {pendingImages.map((img, idx) => (
+            <Box key={img.id} sx={{ position: "relative" }}>
+              <Box
+                component="img"
+                src={img.url}
+                sx={{ width: 64, height: 64, objectFit: "cover", borderRadius: 1, display: "block" }}
+              />
+              <IconButton
+                size="small"
+                onClick={() => setPendingImages((p) => p.filter((_, i) => i !== idx))}
+                sx={{ position: "absolute", top: -8, right: -8, bgcolor: "background.paper", boxShadow: 1, "&:hover": { bgcolor: "background.paper" } }}
+              >
+                <CloseIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Box>
+          ))}
+          {pendingAttachments.map((att, idx) => (
+            <Chip
+              key={att.id}
+              icon={attachmentIcon(att.type)}
+              label={`${att.name} (${att.size})`}
+              onDelete={() => setPendingAttachments((p) => p.filter((_, i) => i !== idx))}
+            />
+          ))}
+        </Box>
+      )}
+
       {/* Compose bar */}
       <Box sx={{ display: "flex", alignItems: "flex-end", gap: 0.5, p: 1, bgcolor: "background.paper", borderTop: "1px solid", borderColor: "divider" }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          onChange={(e) => { handleAttachFiles(e.target.files); e.target.value = ""; }}
+        />
+        <input
+          ref={imageInputRef}
+          type="file"
+          multiple
+          hidden
+          accept="image/*"
+          onChange={(e) => { handleAttachImages(e.target.files); e.target.value = ""; }}
+        />
+        <IconButton size="small" onClick={() => fileInputRef.current?.click()} aria-label="Attach file">
+          <AttachFileIcon />
+        </IconButton>
+        <IconButton size="small" onClick={() => imageInputRef.current?.click()} aria-label="Attach image">
+          <ImageIcon />
+        </IconButton>
         <IconButton size="small" onClick={(e) => setEmojiAnchor(e.currentTarget)}>
           <EmojiEmotionsIcon />
         </IconButton>
@@ -565,10 +761,39 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
             fontSize: 14,
           }}
         />
-        <IconButton color="primary" onClick={handleSend} disabled={!draft.trim()}>
+        <IconButton
+          color="primary"
+          onClick={handleSend}
+          disabled={!draft.trim() && pendingAttachments.length === 0 && pendingImages.length === 0}
+        >
           <SendIcon />
         </IconButton>
       </Box>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <Box
+          onClick={() => setLightbox(null)}
+          sx={{
+            position: "fixed",
+            inset: 0,
+            bgcolor: "rgba(0,0,0,0.85)",
+            zIndex: (t) => t.zIndex.modal + 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "zoom-out",
+          }}
+        >
+          <IconButton
+            onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
+            sx={{ position: "absolute", top: 16, right: 16, color: "common.white" }}
+          >
+            <CloseIcon />
+          </IconButton>
+          <Box component="img" src={lightbox} sx={{ maxWidth: "95vw", maxHeight: "95vh", objectFit: "contain" }} />
+        </Box>
+      )}
     </Box>
   ) : (
     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", bgcolor: "grey.100", color: "text.secondary" }}>

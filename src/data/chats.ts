@@ -1,4 +1,4 @@
-import type { Chat, ChatMessage, ChatParticipant } from "../types";
+import type { Chat, ChatAttachment, ChatImage, ChatMessage, ChatParticipant } from "../types";
 
 /* ── Own user (the logged-in user) ── */
 export const ownUser: ChatParticipant = {
@@ -32,9 +32,10 @@ function msg(
   body: string,
   minutesAgo: number,
   status: "sent" | "delivered" | "read" = "read",
+  extras: { attachments?: ChatAttachment[]; images?: ChatImage[] } = {},
 ): ChatMessage {
   const ts = new Date(Date.now() - minutesAgo * 60_000).toISOString();
-  return { id: `msg-${++msgSeq}`, chatId, fromId, body, timestamp: ts, status };
+  return { id: `msg-${++msgSeq}`, chatId, fromId, body, timestamp: ts, status, ...extras };
 }
 
 /* ── Sample chats ── */
@@ -54,7 +55,15 @@ export const sampleChats: Chat[] = [
       msg("chat-alice", "me", "Not yet, can you share them?", 115, "read"),
       msg("chat-alice", "alice", "Sure! I'll send them over in a sec 😊", 110, "read"),
       msg("chat-alice", "me", "Awesome, thanks! 🙌", 105, "read"),
-      msg("chat-alice", "alice", "Here you go: mockups-v3.fig", 60, "read"),
+      msg("chat-alice", "alice", "Here you go: mockups-v3.fig", 60, "read", {
+        attachments: [{ id: "att-fig-1", name: "mockups-v3.fig", size: "4.2 MB", type: "application/octet-stream" }],
+      }),
+      msg("chat-alice", "alice", "And a quick preview 👇", 58, "read", {
+        images: [
+          { id: "img-1", url: "https://picsum.photos/seed/mockup1/640/400", caption: "Landing hero" },
+          { id: "img-2", url: "https://picsum.photos/seed/mockup2/640/400" },
+        ],
+      }),
       msg("chat-alice", "me", "These look great! Love the new color scheme", 55, "read"),
       msg("chat-alice", "alice", "Thanks! The client wanted something bolder", 50, "read"),
       msg("chat-alice", "me", "Makes sense. Should we discuss in the meeting tomorrow?", 45, "delivered"),
@@ -77,7 +86,12 @@ export const sampleChats: Chat[] = [
       msg("chat-team", "carol", "I'll be there 👍", 175, "read"),
       msg("chat-team", "me", "Same here. I'll share the demo.", 170, "read"),
       msg("chat-team", "alice", "Can we also discuss the timeline?", 165, "read"),
-      msg("chat-team", "david", "Sure, I have the updated Gantt chart ready", 160, "read"),
+      msg("chat-team", "david", "Sure, I have the updated Gantt chart ready", 160, "read", {
+        attachments: [
+          { id: "att-gantt", name: "project-alpha-gantt.pdf", size: "1.8 MB", type: "application/pdf" },
+          { id: "att-xls", name: "timeline.xlsx", size: "312 KB", type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+        ],
+      }),
       msg("chat-team", "bob", "Perfect. Also, the client moved the deadline up by a week 😬", 30),
       msg("chat-team", "carol", "Oh no, that's tight. What can we cut?", 25),
       msg("chat-team", "alice", "The animations can be phase 2", 20),
@@ -100,6 +114,9 @@ export const sampleChats: Chat[] = [
       msg("chat-bob", "bob", "Almost! Just fixing one edge case", 90, "read"),
       msg("chat-bob", "me", "No rush, just checking in", 85, "read"),
       msg("chat-bob", "bob", "Done! You can test now. Endpoint: /api/v2/users", 50, "read"),
+      msg("chat-bob", "bob", "Here's the screenshot of the test output", 48, "read", {
+        images: [{ id: "img-bob-1", url: "https://picsum.photos/seed/terminal/800/450", caption: "All 42 tests passing" }],
+      }),
       msg("chat-bob", "me", "Thanks! I'll run the integration tests 🚀", 45, "read"),
     ],
   },
@@ -117,7 +134,9 @@ export const sampleChats: Chat[] = [
       msg("chat-carol", "carol", "Hi John! Quick question about the release", 200, "read"),
       msg("chat-carol", "me", "Sure, what's up?", 195, "read"),
       msg("chat-carol", "carol", "Are we still on track for Friday?", 190, "read"),
-      msg("chat-carol", "me", "Yes, all tests are passing. QA starts tomorrow.", 185, "read"),
+      msg("chat-carol", "me", "Yes, all tests are passing. QA starts tomorrow.", 185, "read", {
+        attachments: [{ id: "att-qa", name: "qa-checklist-v2.docx", size: "86 KB", type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }],
+      }),
       msg("chat-carol", "carol", "Great! The stakeholders will be happy 😄", 90),
     ],
   },
@@ -132,7 +151,14 @@ export const sampleChats: Chat[] = [
     description: "Design system discussions and reviews",
     accountEmail: "jane@103mail.com",
     messages: [
-      msg("chat-design", "eve", "New icon set is uploaded to Figma", 240, "read"),
+      msg("chat-design", "eve", "New icon set is uploaded to Figma", 240, "read", {
+        images: [
+          { id: "img-icn-1", url: "https://picsum.photos/seed/icons1/320/320" },
+          { id: "img-icn-2", url: "https://picsum.photos/seed/icons2/320/320" },
+          { id: "img-icn-3", url: "https://picsum.photos/seed/icons3/320/320" },
+          { id: "img-icn-4", url: "https://picsum.photos/seed/icons4/320/320" },
+        ],
+      }),
       msg("chat-design", "grace", "Love them! Very clean 🎨", 235, "read"),
       msg("chat-design", "alice", "Should we update the style guide?", 230, "read"),
       msg("chat-design", "me", "Yes, I can draft the updates this week", 220, "read"),
@@ -169,7 +195,12 @@ export const sampleChats: Chat[] = [
     accountEmail: "jane@103mail.com",
     messages: [
       msg("chat-eve", "me", "Hey Eve, loved the new logo concepts!", 1500, "read"),
-      msg("chat-eve", "eve", "Thanks! Which one do you prefer?", 1490, "read"),
+      msg("chat-eve", "eve", "Thanks! Which one do you prefer?", 1490, "read", {
+        images: [
+          { id: "img-logo-1", url: "https://picsum.photos/seed/logoA/480/360", caption: "Option A" },
+          { id: "img-logo-2", url: "https://picsum.photos/seed/logoB/480/360", caption: "Option B" },
+        ],
+      }),
       msg("chat-eve", "me", "The second one with the gradient 💜", 1480, "read"),
       msg("chat-eve", "eve", "Good choice! I'll refine that one.", 1440, "read"),
     ],
@@ -192,7 +223,9 @@ export const sampleChats: Chat[] = [
       msg("chat-frank", "frank", "Already submitted a detailed report", 40, "read"),
       msg("chat-frank", "frank", "Also check the session handling", 25),
       msg("chat-frank", "frank", "There might be a token leak in the refresh flow", 22),
-      msg("chat-frank", "frank", "I'll send over the full audit report by EOD", 20),
+      msg("chat-frank", "frank", "I'll send over the full audit report by EOD", 20, "read", {
+        attachments: [{ id: "att-audit", name: "security-audit-2026-Q2.pdf", size: "3.4 MB", type: "application/pdf" }],
+      }),
     ],
   },
 ];
