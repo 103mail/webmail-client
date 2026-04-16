@@ -62,7 +62,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
   const [enabledAccounts, setEnabledAccounts] = useState<Set<string>>(
     () => new Set(accounts.map((a) => a.email)),
   );
-  const [editDialog, setEditDialog] = useState<{ start: Date; end: Date } | null>(null);
+  const [editDialog, setEditDialog] = useState<{ start: Date; end: Date; title?: string; location?: string; description?: string; editId?: string } | null>(null);
   const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
 
   // If the view becomes unavailable on breakpoint change, fall back.
@@ -110,20 +110,42 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     setEditDialog({ start, end });
   }, []);
 
-  const handleSaveEvent = useCallback((data: { title: string; start: Date; end: Date; location: string; description: string }) => {
-    const defaultAccount = accounts[0]?.email ?? "";
-    const newEvent: CalendarEvent = {
-      id: `local-${Date.now()}`,
-      accountEmail: defaultAccount,
-      title: data.title,
-      start: data.start,
-      end: data.end,
-      location: data.location || undefined,
-      description: data.description || undefined,
-      color: accountColors[defaultAccount] ?? "#607d8b",
-    };
-    setLocalEvents((prev) => [...prev, newEvent]);
+  const handleSelectEvent = useCallback((ev: CalendarEvent) => {
+    setEditDialog({
+      start: ev.start,
+      end: ev.end,
+      title: ev.title,
+      location: ev.location,
+      description: ev.description,
+      editId: ev.id,
+    });
   }, []);
+
+  const handleSaveEvent = useCallback((data: { title: string; start: Date; end: Date; location: string; description: string }) => {
+    const editId = editDialog?.editId;
+    if (editId) {
+      setLocalEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === editId
+            ? { ...ev, title: data.title, start: data.start, end: data.end, location: data.location || undefined, description: data.description || undefined }
+            : ev,
+        ),
+      );
+    } else {
+      const defaultAccount = accounts[0]?.email ?? "";
+      const newEvent: CalendarEvent = {
+        id: `local-${Date.now()}`,
+        accountEmail: defaultAccount,
+        title: data.title,
+        start: data.start,
+        end: data.end,
+        location: data.location || undefined,
+        description: data.description || undefined,
+        color: accountColors[defaultAccount] ?? "#607d8b",
+      };
+      setLocalEvents((prev) => [...prev, newEvent]);
+    }
+  }, [editDialog?.editId]);
 
   const toggleAccount = (email: string) => {
     setEnabledAccounts((prev) => {
@@ -199,11 +221,11 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
   const body = (() => {
     if (view === "month")
       return (
-        <MonthView anchor={anchor} events={monthEvents} onSelectDay={openDay} />
+        <MonthView anchor={anchor} events={monthEvents} onSelectDay={openDay} onSelectEvent={handleSelectEvent} />
       );
     if (view === "agenda")
-      return <AgendaView anchor={anchor} events={events} />;
-    return <TimeGridView days={gridDays} events={events} onCreateEvent={handleCreateEvent} />;
+      return <AgendaView anchor={anchor} events={events} onSelectEvent={handleSelectEvent} />;
+    return <TimeGridView days={gridDays} events={events} onCreateEvent={handleCreateEvent} onSelectEvent={handleSelectEvent} />;
   })();
 
   const main = (
@@ -221,9 +243,13 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
 
   const eventDialog = editDialog && (
     <EventEditDialog
+      key={editDialog.editId ?? "new"}
       open
       initialStart={editDialog.start}
       initialEnd={editDialog.end}
+      initialTitle={editDialog.title}
+      initialLocation={editDialog.location}
+      initialDescription={editDialog.description}
       onClose={() => setEditDialog(null)}
       onSave={handleSaveEvent}
     />

@@ -329,16 +329,16 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent }: Tim
 
                 {dayEvents.map((ev) => {
                   const layout = overlaps.get(ev.id) ?? { col: 0, cols: 1 };
-                  const startMin = Math.max(
-                    minutesFromStart(ev.start),
-                    DAY_START_HOUR * 60,
-                  );
-                  const endMin = Math.min(
-                    minutesFromStart(ev.end),
-                    DAY_END_HOUR * 60,
-                  );
+                  const evStartMin = isSameDay(ev.start, day)
+                    ? minutesFromStart(ev.start)
+                    : DAY_START_HOUR * 60;
+                  const evEndMin = isSameDay(ev.end, day)
+                    ? minutesFromStart(ev.end)
+                    : DAY_END_HOUR * 60;
+                  const startMin = Math.max(evStartMin, DAY_START_HOUR * 60);
+                  const endMin = Math.min(evEndMin, DAY_END_HOUR * 60);
                   const top = ((startMin - DAY_START_HOUR * 60) / 60) * HOUR_HEIGHT;
-                  const height = Math.max(18, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
+                  const height = Math.max(18, ((endMin - startMin) / 60) * HOUR_HEIGHT - 4);
                   const widthPct = 100 / layout.cols;
                   const leftPct = layout.col * widthPct;
                   const isLastCol = layout.col === layout.cols - 1;
