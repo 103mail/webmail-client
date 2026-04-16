@@ -1,14 +1,21 @@
 import { useState } from "react";
 import {
+  AppBar,
   Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   MenuItem,
   TextField,
+  Toolbar,
+  Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { format } from "date-fns";
 
 interface EventEditDialogProps {
@@ -49,9 +56,10 @@ function timeToMinutes(t: string) {
 function formatDuration(minutes: number) {
   if (minutes <= 0) return "";
   if (minutes < 60) return `${minutes}m`;
-  const h = minutes / 60;
-  if (Number.isInteger(h)) return `${h}h`;
-  return `${parseFloat(h.toFixed(2))}h`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}:${String(m).padStart(2, "0")}h`;
 }
 
 function minutesToTime(m: number) {
@@ -60,6 +68,8 @@ function minutesToTime(m: number) {
 }
 
 export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, initialLocation, initialDescription, onClose, onSave }: EventEditDialogProps) {
+  const theme = useTheme();
+  const fullScreen = !useMediaQuery(theme.breakpoints.up("md"));
   const [title, setTitle] = useState(initialTitle ?? "");
   const [date, setDate] = useState(toDateInput(initialStart));
   const [startTime, setStartTime] = useState(toTimeInput(initialStart));
@@ -110,8 +120,22 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>New Event</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={fullScreen}>
+      {fullScreen ? (
+        <AppBar position="static" elevation={1}>
+          <Toolbar>
+            <IconButton edge="start" color="inherit" onClick={onClose} sx={{ mr: 1 }}>
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6" sx={{ flexGrow: 1 }}>
+              {initialTitle ? "Edit Event" : "New Event"}
+            </Typography>
+            <Button color="inherit" onClick={handleSave}>Save</Button>
+          </Toolbar>
+        </AppBar>
+      ) : (
+        <DialogTitle>{initialTitle ? "Edit Event" : "New Event"}</DialogTitle>
+      )}
       <DialogContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
           <TextField
@@ -169,10 +193,12 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
           />
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSave}>Save</Button>
-      </DialogActions>
+      {!fullScreen && (
+        <DialogActions>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="contained" onClick={handleSave}>Save</Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 }
