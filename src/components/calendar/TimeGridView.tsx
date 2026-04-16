@@ -140,10 +140,10 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
               key={day.toISOString()}
               sx={{
                 borderLeft: `1px solid ${theme.palette.divider}`,
-                px: 0.5,
+                px: "2px",
                 minWidth: 0,
                 overflow: "hidden",
-                py: 0.25,
+                py: 0.5,
                 display: "flex",
                 flexDirection: "column",
                 gap: 0.25,
