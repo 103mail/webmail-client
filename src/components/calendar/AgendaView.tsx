@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Box, Divider, List, ListItemButton, Typography, useTheme } from "@mui/material";
+import { Box, Divider, List, ListItemButton, Typography } from "@mui/material";
 import { format, addDays, startOfDay } from "date-fns";
 import type { CalendarEvent } from "./types";
 import { isSameDay } from "./utils";
@@ -12,7 +12,7 @@ interface AgendaViewProps {
 }
 
 export function AgendaView({ anchor, days = 14, events, onSelectEvent }: AgendaViewProps) {
-  const theme = useTheme();
+
   const today = new Date();
 
   const grouped = useMemo(() => {
@@ -34,8 +34,6 @@ export function AgendaView({ anchor, days = 14, events, onSelectEvent }: AgendaV
         flexGrow: 1,
         minHeight: 0,
         overflow: "auto",
-        border: `1px solid ${theme.palette.divider}`,
-        borderRadius: 1,
         bgcolor: "background.paper",
       }}
     >

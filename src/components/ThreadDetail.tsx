@@ -129,6 +129,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               autoFocus
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
+              sx={{ "& .MuiInputBase-root": { bgcolor: "background.paper" } }}
             />
             {/attach/i.test(replyText) && replyAttachments.length === 0 && (
               <Alert severity="warning">

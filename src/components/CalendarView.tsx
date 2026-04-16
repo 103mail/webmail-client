@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Chip,
   Divider,
+  Drawer,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -19,23 +19,40 @@ import { accounts } from "../data/accounts";
 import { appointments, accountColors } from "../data/appointments";
 import { AccountsPanel } from "./calendar/AccountsPanel";
 import { AgendaView } from "./calendar/AgendaView";
-import { CalendarToolbar } from "./calendar/CalendarToolbar";
 import { MonthView } from "./calendar/MonthView";
 import { TimeGridView } from "./calendar/TimeGridView";
 import type { CalendarEvent, CalendarViewKind } from "./calendar/types";
 import { rangeForView } from "./calendar/utils";
 
 const ACCOUNTS_PANEL_WIDTH = 240;
+const RAIL_WIDTH = 60;
 
-export function CalendarView() {
+export interface CalendarHeaderState {
+  title: string;
+  view: CalendarViewKind;
+  availableViews: CalendarViewKind[];
+  onView: (v: CalendarViewKind) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
+}
+
+interface CalendarViewProps {
+  drawerOpen: boolean;
+  onDrawerClose: () => void;
+  layout: "mobile" | "medium" | "large";
+  onHeaderChange?: (state: CalendarHeaderState) => void;
+}
+
+export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange }: CalendarViewProps) {
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
-  const isLg = useMediaQuery(theme.breakpoints.up("lg"));
 
   const availableViews = useMemo<CalendarViewKind[]>(() => {
     if (!isMd) return ["day", "3day", "month", "agenda"];
-    return ["week5", "week7", "month", "agenda"];
-  }, [isMd]);
+    if (layout === "large") return ["week7", "month", "agenda"];
+    return ["week5", "month", "agenda"];
+  }, [isMd, layout]);
 
   const [view, setView] = useState<CalendarViewKind>(() =>
     isMd ? "week7" : "3day",
@@ -46,10 +63,11 @@ export function CalendarView() {
   );
 
   // If the view becomes unavailable on breakpoint change, fall back.
-  if (!availableViews.includes(view)) {
-    const fallback = availableViews[0];
-    setTimeout(() => setView(fallback), 0);
-  }
+  useEffect(() => {
+    if (!availableViews.includes(view)) {
+      setView(availableViews[0]);
+    }
+  }, [availableViews, view]);
 
   const events = useMemo<CalendarEvent[]>(
     () =>
@@ -101,17 +119,30 @@ export function CalendarView() {
     return `${format(first, "MMM d")} – ${format(last, "MMM d, yyyy")}`;
   }, [view, anchor, gridDays]);
 
-  const goPrev = () => {
+  const gridLength = gridDays.length;
+  const goPrev = useCallback(() => {
     if (view === "month") setAnchor((a) => addMonths(a, -1));
     else if (view === "agenda") setAnchor((a) => addDays(a, -14));
-    else setAnchor((a) => addDays(a, -gridDays.length));
-  };
-  const goNext = () => {
+    else setAnchor((a) => addDays(a, -gridLength));
+  }, [view, gridLength]);
+  const goNext = useCallback(() => {
     if (view === "month") setAnchor((a) => addMonths(a, 1));
     else if (view === "agenda") setAnchor((a) => addDays(a, 14));
-    else setAnchor((a) => addDays(a, gridDays.length));
-  };
-  const goToday = () => setAnchor(new Date());
+    else setAnchor((a) => addDays(a, gridLength));
+  }, [view, gridLength]);
+  const goToday = useCallback(() => setAnchor(new Date()), []);
+
+  useEffect(() => {
+    onHeaderChange?.({
+      title,
+      view,
+      availableViews,
+      onView: setView,
+      onPrev: goPrev,
+      onNext: goNext,
+      onToday: goToday,
+    });
+  }, [onHeaderChange, title, view, availableViews, goPrev, goNext, goToday]);
 
   const openDay = (d: Date) => {
     setAnchor(d);
@@ -138,44 +169,19 @@ export function CalendarView() {
   })();
 
   const main = (
-    <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, p: { xs: 1, md: 2 }, gap: 1 }}>
-      <CalendarToolbar
-        title={title}
-        view={view}
-        availableViews={availableViews}
-        onView={setView}
-        onPrev={goPrev}
-        onNext={goNext}
-        onToday={goToday}
-      />
-      {!isLg && (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-          {accounts.map((a) => {
-            const enabled = enabledAccounts.has(a.email);
-            const color = accountColors[a.email] ?? "#607d8b";
-            return (
-              <Chip
-                key={a.email}
-                label={a.email}
-                size="small"
-                onClick={() => toggleAccount(a.email)}
-                sx={{
-                  bgcolor: enabled ? color : "transparent",
-                  color: enabled ? "#fff" : "text.primary",
-                  border: "1px solid",
-                  borderColor: color,
-                  "&:hover": { bgcolor: enabled ? color : "action.hover" },
-                }}
-              />
-            );
-          })}
-        </Box>
-      )}
-      <Box sx={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{body}</Box>
-    </Box>
+    <Box sx={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{body}</Box>
   );
 
-  if (isLg) {
+  const accountsPanel = (
+    <AccountsPanel
+      accounts={accounts}
+      colors={accountColors}
+      enabled={enabledAccounts}
+      onToggle={toggleAccount}
+    />
+  );
+
+  if (layout === "large") {
     return (
       <Box sx={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
         <Box
@@ -187,12 +193,7 @@ export function CalendarView() {
             bgcolor: "background.paper",
           }}
         >
-          <AccountsPanel
-            accounts={accounts}
-            colors={accountColors}
-            enabled={enabledAccounts}
-            onToggle={toggleAccount}
-          />
+          {accountsPanel}
           <Divider />
         </Box>
         <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>{main}</Box>
@@ -200,5 +201,24 @@ export function CalendarView() {
     );
   }
 
-  return main;
+  return (
+    <>
+      <Drawer
+        variant="temporary"
+        open={drawerOpen}
+        onClose={onDrawerClose}
+        sx={{
+          "& .MuiDrawer-paper": {
+            width: ACCOUNTS_PANEL_WIDTH,
+            mt: { xs: "56px", sm: "64px" },
+            ...(layout === "medium" && { ml: `${RAIL_WIDTH}px` }),
+          },
+        }}
+        slotProps={{ backdrop: { onClick: onDrawerClose } }}
+      >
+        {accountsPanel}
+      </Drawer>
+      {main}
+    </>
+  );
 }

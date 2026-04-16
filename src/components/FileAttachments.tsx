@@ -50,7 +50,7 @@ export function FileAttachments({ files, onChange, size = "medium" }: FileAttach
           py: small ? 0.5 : 1,
           border: "1px solid",
           borderColor: dragOver ? "primary.main" : "action.disabled",
-          bgcolor: dragOver ? "rgba(25, 118, 210, 0.08)" : "transparent",
+          bgcolor: dragOver ? "rgba(25, 118, 210, 0.08)" : "background.paper",
           borderRadius: 1,
           display: "flex",
           alignItems: "center",

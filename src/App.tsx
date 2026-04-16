@@ -31,8 +31,13 @@ import { ComposeScreen } from "./components/ComposeScreen";
 import { MailList } from "./components/MailList";
 import { ThreadDetail } from "./components/ThreadDetail";
 import { CalendarView } from "./components/CalendarView";
+import type { CalendarHeaderState } from "./components/CalendarView";
 import { ChatView } from "./components/ChatView";
 import type { ChatHeaderState } from "./components/ChatView";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import TodayIcon from "@mui/icons-material/Today";
+import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -62,6 +67,8 @@ export function App() {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [moveAnchor, setMoveAnchor] = useState<null | HTMLElement>(null);
   const [chatHeader, setChatHeader] = useState<ChatHeaderState | null>(null);
+  const [calendarHeader, setCalendarHeader] = useState<CalendarHeaderState | null>(null);
+  const [calViewAnchor, setCalViewAnchor] = useState<null | HTMLElement>(null);
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
   const isXl = useMediaQuery(theme.breakpoints.up("xl"));
@@ -166,7 +173,7 @@ export function App() {
 
   const title =
     section === "calendar"
-      ? "Calendar"
+      ? calendarHeader?.title ?? "Calendar"
       : section === "chat"
         ? chatHeader?.title ?? "Chat"
         : mailView === "compose" && !multiPane
@@ -214,7 +221,7 @@ export function App() {
   const showMailToolbar = section === "mail";
   const showChatBack = section === "chat" && Boolean(chatHeader?.onBack);
   const showBackArrow = showChatBack || (showMailToolbar && mailView === "thread" && !multiPane);
-  const showHamburger = !showBackArrow && layout !== "large" && section === "mail";
+  const showHamburger = !showBackArrow && layout !== "large" && (section === "mail" || section === "calendar");
   const showLogo = !showBackArrow && !showHamburger;
   const showSearchBar = showMailToolbar && (multiPane || mailView === "list");
   const showThreadActions = showMailToolbar && selectedThread && (multiPane ? mailView === "thread" : mailView === "thread");
@@ -442,6 +449,32 @@ export function App() {
                 </>
               )}
 
+              {/* Calendar actions */}
+              {section === "calendar" && calendarHeader && (
+                <>
+                  <Tooltip title="Today">
+                    <IconButton color="inherit" aria-label="today" onClick={calendarHeader.onToday}>
+                      <TodayIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Previous">
+                    <IconButton color="inherit" aria-label="previous" onClick={calendarHeader.onPrev}>
+                      <ChevronLeftIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Next">
+                    <IconButton color="inherit" aria-label="next" onClick={calendarHeader.onNext}>
+                      <ChevronRightIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Change view">
+                    <IconButton color="inherit" aria-label="change view" onClick={(e) => setCalViewAnchor(e.currentTarget)}>
+                      <ViewAgendaIcon />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
+
               {/* Thread actions */}
               {showThreadActions && (
                 <>
@@ -484,6 +517,24 @@ export function App() {
                 {f.name}
               </MenuItem>
             ))}
+        </Menu>
+        <Menu
+          anchorEl={calViewAnchor}
+          open={Boolean(calViewAnchor)}
+          onClose={() => setCalViewAnchor(null)}
+        >
+          {calendarHeader?.availableViews.map((v) => (
+            <MenuItem
+              key={v}
+              selected={v === calendarHeader.view}
+              onClick={() => {
+                calendarHeader.onView(v);
+                setCalViewAnchor(null);
+              }}
+            >
+              {{ day: "Day", "3day": "3 Days", week5: "5 Days", week7: "Week", month: "Month", agenda: "Agenda" }[v]}
+            </MenuItem>
+          ))}
         </Menu>
       </AppBar>}
 
@@ -576,7 +627,7 @@ export function App() {
 
         {section === "calendar" && (
           <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <CalendarView />
+            <CalendarView drawerOpen={mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} />
           </Box>
         )}
         {section === "chat" && (

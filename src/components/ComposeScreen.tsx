@@ -70,6 +70,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
   };
 
   return (
+    <Box sx={{ height: "100%", overflow: "auto", bgcolor: "grey.100" }}>
     <Box sx={{ p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
         <Autocomplete
           multiple
@@ -121,7 +122,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
             );
           }}
           renderInput={(params) => (
-            <TextField {...params} label="To" placeholder="Add recipients…" />
+            <TextField {...params} label="To" placeholder="Add recipients…" sx={{ "& .MuiInputBase-root": { bgcolor: "background.paper" } }} />
           )}
         />
 
@@ -130,6 +131,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           fullWidth
+          sx={{ "& .MuiInputBase-root": { bgcolor: "background.paper" } }}
         />
 
         <TextField
@@ -139,6 +141,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           fullWidth
           multiline
           minRows={5}
+          sx={{ "& .MuiInputBase-root": { bgcolor: "background.paper" } }}
         />
         {/attach/i.test(body) && attachments.length === 0 && (
           <Alert severity="warning">
@@ -180,6 +183,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
             </>
           )}
         </Box>
+    </Box>
     </Box>
   );
 }

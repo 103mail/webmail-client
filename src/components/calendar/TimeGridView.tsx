@@ -43,8 +43,6 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
         flexGrow: 1,
         minWidth: 0,
         minHeight: 0,
-        border: `1px solid ${theme.palette.divider}`,
-        borderRadius: 1,
         overflow: "hidden",
         bgcolor: "background.paper",
       }}
@@ -83,7 +81,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                 textAlign: "center",
                 borderLeft: `1px solid ${theme.palette.divider}`,
                 ...(isToday && {
-                  borderTop: `4px solid ${theme.palette.primary.main}`,
+                  borderBottom: `4px solid ${theme.palette.primary.main}`,
                 }),
               }}
             >
@@ -218,6 +216,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
             const overlaps = layoutOverlaps(dayEvents);
             const isToday = isSameDay(day, today);
             const isPast = startOfDay(day).getTime() < todayStart;
+            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
             return (
               <Box
                 key={day.toISOString()}
@@ -236,8 +235,8 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                       left: 0,
                       right: 0,
                       height: HOUR_HEIGHT,
-                      borderTop: h === DAY_START_HOUR ? "none" : `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-                      ...(isPast || (h < BUSINESS_START || h >= BUSINESS_END)) && {
+                      borderTop: h === DAY_START_HOUR ? "none" : `1px solid ${alpha(theme.palette.divider, 0.15)}`,
+                      ...(isPast || isWeekend || (h < BUSINESS_START || h >= BUSINESS_END)) && {
                         bgcolor: alpha(theme.palette.text.primary, 0.03),
                       },
                     }}
@@ -254,7 +253,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                       left: 0,
                       right: 0,
                       height: 0,
-                      borderTop: `1px dashed ${alpha(theme.palette.divider, 0.4)}`,
+                      borderTop: `1px dashed ${alpha(theme.palette.divider, 0.12)}`,
                     }}
                   />
                 ))}

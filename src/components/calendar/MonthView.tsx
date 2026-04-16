@@ -26,8 +26,6 @@ export function MonthView({ anchor, events, onSelectEvent, onSelectDay }: MonthV
         flexGrow: 1,
         minWidth: 0,
         minHeight: 0,
-        border: `1px solid ${theme.palette.divider}`,
-        borderRadius: 1,
         overflow: "hidden",
         bgcolor: "background.paper",
       }}
