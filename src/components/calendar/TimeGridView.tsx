@@ -81,7 +81,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                 textAlign: "center",
                 borderLeft: `1px solid ${theme.palette.divider}`,
                 ...(isToday && {
-                  borderBottom: `4px solid ${theme.palette.primary.main}`,
+                  boxShadow: `inset 0 -4px 0 0 ${theme.palette.primary.main}`,
                 }),
               }}
             >

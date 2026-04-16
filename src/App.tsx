@@ -586,12 +586,12 @@ export function App() {
         sx={{
           flexGrow: 1,
           bgcolor: "background.paper",
-          mt: hideAppBar ? 0 : "64px",
+          mt: hideAppBar ? 0 : { xs: "56px", sm: "64px" },
           mb: layout === "mobile" ? "56px" : 0,
           position: "relative",
           height: hideAppBar
             ? (layout === "mobile" ? "calc(100vh - 56px)" : "100vh")
-            : (layout === "mobile" ? "calc(100vh - 64px - 56px)" : "calc(100vh - 64px)"),
+            : (layout === "mobile" ? { xs: "calc(100vh - 56px - 56px)", sm: "calc(100vh - 64px - 56px)" } : { xs: "calc(100vh - 56px)", sm: "calc(100vh - 64px)" }),
           overflow: "hidden",
           display: "flex",
         }}
