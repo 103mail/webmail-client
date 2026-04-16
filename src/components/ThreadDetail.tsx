@@ -108,13 +108,15 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
 
   return (
     <Box sx={{ height: "100%", overflow: "auto", bgcolor: "grey.100" }}>
-      <Box sx={{ px: { xs: 2, sm: 3 }, py: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ px: { xs: 1, sm: 1.5 }, py: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
         {/* Subject */}
-        <Typography variant="h6">{thread.subject}</Typography>
+        <Paper variant="outlined" sx={{ px: 2, py: 1, mt: 0.5 }}>
+          <Typography variant="h6">{thread.subject}</Typography>
+        </Paper>
 
         {/* Reply pane */}
         {pane === "reply" && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Paper variant="outlined" sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Typography variant="body2" color="text.secondary">To:</Typography>
               {[...replyRecipients.entries()].map(([email, name]) => (
@@ -160,12 +162,12 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                 </>
               )}
             </Box>
-          </Box>
+          </Paper>
         )}
 
         {/* Forward pane */}
         {pane === "forward" && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Paper variant="outlined" sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Typography variant="body2" color="text.secondary">To:</Typography>
               {[...replyRecipients.entries()].map(([email, name]) => (
@@ -233,7 +235,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                 Discard
               </Button>
             </Box>
-          </Box>
+          </Paper>
         )}
 
         {/* Messages */}

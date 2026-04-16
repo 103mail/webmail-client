@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Alert,
   Box,
+  Paper,
   Typography,
   TextField,
   Button,
@@ -71,7 +72,8 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
 
   return (
     <Box sx={{ height: "100%", overflow: "auto", bgcolor: "grey.100" }}>
-    <Box sx={{ p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
+    <Box sx={{ px: { xs: 1, sm: 1.5 }, pt: 1.5, pb: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Paper variant="outlined" sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
         <Autocomplete
           multiple
           freeSolo
@@ -183,6 +185,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
             </>
           )}
         </Box>
+      </Paper>
     </Box>
     </Box>
   );

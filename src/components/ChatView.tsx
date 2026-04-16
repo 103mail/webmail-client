@@ -6,6 +6,7 @@ import {
   Box,
   Chip,
   Divider,
+  Drawer,
   IconButton,
   InputBase,
   List,
@@ -64,9 +65,13 @@ interface ChatViewProps {
   onHeaderChange?: (state: ChatHeaderState | null) => void;
 }
 
+/* ── Helpers ── */
+const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u200d\ufe0f\s]+$/u;
+function isEmojiOnly(text: string) {
+  return text.length <= 15 && EMOJI_ONLY_RE.test(text.trim());
+}
+
 /* ── Constants ── */
-const CHAT_LIST_WIDTH = 360;
-const INFO_PANEL_WIDTH = 300;
 
 const EMOJI_PICKS = [
   "😀","😂","😍","🥰","😎","🤔","👍","👎","🙌","🎉",
@@ -91,7 +96,7 @@ function formatTime(iso: string) {
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / 86_400_000);
-  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
   if (diffDays === 0) return time;
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
@@ -99,7 +104,7 @@ function formatTime(iso: string) {
 }
 
 function formatMessageTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 function shouldShowDateSeparator(prev: ChatMessage | undefined, curr: ChatMessage) {
@@ -512,7 +517,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                 <Typography variant="subtitle2" noWrap sx={{ ml: 0.5, flexGrow: 1, fontWeight: 600 }}>
                   {email}
                 </Typography>
-                {unread > 0 && (
+                {collapsed && unread > 0 && (
                   <Badge badgeContent={unread} color="primary" sx={{ mr: 1.2 }} />
                 )}
               </ListItemButton>
@@ -534,55 +539,70 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                     }}
                   >
                     <ListItemAvatar>
-                      <Badge
-                        badgeContent={chat.unreadCount}
-                        color="primary"
-                        overlap="circular"
-                        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                      >
-                        <Avatar sx={{ bgcolor: avatarColor(chat.name), width: 48, height: 48 }}>
-                          {chat.isGroup ? <GroupIcon /> : getInitials(chat.name)}
-                        </Avatar>
-                      </Badge>
+                      {(() => {
+                        const otherParticipant = !chat.isGroup ? participantMap.get(chat.participants.find((p) => p !== "me") ?? "") : undefined;
+                        const isOnline = otherParticipant?.status === "online";
+                        return isOnline ? (
+                          <Badge
+                            variant="dot"
+                            overlap="circular"
+                            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                            sx={{ "& .MuiBadge-dot": { bgcolor: "success.main", width: 12, height: 12, borderRadius: "50%", border: "2px solid white" } }}
+                          >
+                            <Avatar sx={{ bgcolor: avatarColor(chat.name), width: 48, height: 48 }}>
+                              {getInitials(chat.name)}
+                            </Avatar>
+                          </Badge>
+                        ) : (
+                          <Avatar sx={{ bgcolor: avatarColor(chat.name), width: 48, height: 48 }}>
+                            {chat.isGroup ? <GroupIcon /> : getInitials(chat.name)}
+                          </Avatar>
+                        );
+                      })()}
                     </ListItemAvatar>
                     <ListItemText
                       sx={{ ml: 0.5 }}
                       primary={
-                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", lineHeight: 1.6 }}>
                           <Typography
                             variant="body1"
                             noWrap
-                            sx={{ flexGrow: 1, mr: 1, fontWeight: chat.unreadCount > 0 ? 700 : 400 }}
+                            sx={{ flexGrow: 1, mr: 1 }}
                           >
                             {chat.name}
                           </Typography>
-                          <Typography variant="caption" color={chat.unreadCount > 0 ? "primary" : "text.secondary"} sx={{ whiteSpace: "nowrap" }}>
+                          <Typography variant="caption" color={chat.unreadCount > 0 ? "primary" : "text.secondary"} sx={{ whiteSpace: "nowrap", fontWeight: chat.unreadCount > 0 ? 700 : 400 }}>
                             {formatTime(chat.lastActivity)}
                           </Typography>
                         </Box>
                       }
                       secondary={
-                        <Typography
-                          variant="body2"
-                          noWrap
-                          color={chat.unreadCount > 0 ? "text.primary" : "text.secondary"}
-                          sx={{ fontWeight: chat.unreadCount > 0 ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", display: "block" }}
-                          component="span"
-                        >
-                          {lastMsg && (() => {
-                            const preview = lastMsg.body
-                              || (lastMsg.images?.length ? `📷 ${lastMsg.images.length} photo${lastMsg.images.length > 1 ? "s" : ""}` : "")
-                              || (lastMsg.attachments?.length ? `📎 ${lastMsg.attachments[0].name}` : "");
-                            return (
-                              <>
-                                {lastMsg.fromId === "me" && <StatusIcon status={lastMsg.status} />}
-                                {" "}
-                                {chat.isGroup && `${senderName}: `}
-                                {preview}
-                              </>
-                            );
-                          })()}
-                        </Typography>
+                        <Box component="span" sx={{ display: "flex", alignItems: "center", lineHeight: 1.6 }}>
+                          <Typography
+                            variant="body2"
+                            noWrap
+                            color="text.secondary"
+                            sx={{ flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
+                            component="span"
+                          >
+                            {lastMsg && (() => {
+                              const preview = lastMsg.body
+                                || (lastMsg.images?.length ? `📷 ${lastMsg.images.length} photo${lastMsg.images.length > 1 ? "s" : ""}` : "")
+                                || (lastMsg.attachments?.length ? `📎 ${lastMsg.attachments[0].name}` : "");
+                              return (
+                                <>
+                                  {lastMsg.fromId === "me" && <StatusIcon status={lastMsg.status} />}
+                                  {" "}
+                                  {chat.isGroup && `${senderName}: `}
+                                  {preview}
+                                </>
+                              );
+                            })()}
+                          </Typography>
+                          {chat.unreadCount > 0 && (
+                            <Badge badgeContent={chat.unreadCount} color="primary" sx={{ ml: 1.5, mr: 1.2, flexShrink: 0 }} />
+                          )}
+                        </Box>
                       }
                     />
                   </ListItemButton>
@@ -600,7 +620,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "grey.100" }}>
 
       {/* Messages */}
-      <Box sx={{ flexGrow: 1, overflow: "auto", px: { xs: 1, md: 3 }, py: 1 }}>
+      <Box sx={{ flexGrow: 1, overflow: "auto", px: { xs: 1, sm: 1.5 }, py: 1 }}>
         {(() => {
           const snap = unreadSnapshot.current[selectedChat.id] ?? 0;
           const unreadStart = snap > 0 ? selectedChat.messages.length - snap : -1;
@@ -645,9 +665,19 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                     </Typography>
                   )}
                   {msg.body && (
-                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                      {msg.body}
-                    </Typography>
+                    isEmojiOnly(msg.body) ? (
+                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: "2.5rem", lineHeight: 1 }}>
+                        {msg.body}
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", "& .inline-emoji": { fontSize: "1.1rem", verticalAlign: "-0.05em", lineHeight: 0 } }}>
+                        {msg.body.split(/(\p{Emoji_Presentation}\ufe0f?|\p{Extended_Pictographic}\ufe0f?)/u).map((part, i) =>
+                          /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]\ufe0f?$/u.test(part)
+                            ? <span key={i} className="inline-emoji">{part}</span>
+                            : part
+                        )}
+                      </Typography>
+                    )
                   )}
                   {msg.images && msg.images.length > 0 && (
                     <ImageGrid images={msg.images} onOpen={setLightbox} />
@@ -889,8 +919,8 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
       {/* Chat list */}
       <Box
         sx={{
-          width: CHAT_LIST_WIDTH,
-          minWidth: 280,
+          width: "30%",
+          minWidth: 360,
           flexShrink: 0,
           borderRight: "1px solid",
           borderColor: "divider",
@@ -900,16 +930,27 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
         {chatListPane}
       </Box>
 
-      {/* Conversation — shrinks when info pane is visible */}
+      {/* Conversation */}
       <Box sx={{ flexGrow: 1, minWidth: 0, overflow: "hidden" }}>
         {conversationPane}
       </Box>
 
-      {/* Info panel — always visible on xl, toggled inline on md */}
-      {selectedChat && (threePane || showInfo) && (
-        <Box sx={{ width: INFO_PANEL_WIDTH, flexShrink: 0, overflow: "auto" }}>
+      {/* Info panel — inline on desktop, drawer on tablet */}
+      {selectedChat && threePane && (
+        <Box sx={{ width: 300, flexShrink: 0, overflow: "auto" }}>
           {infoPane}
         </Box>
+      )}
+      {selectedChat && !threePane && (
+        <Drawer
+          anchor="right"
+          variant="temporary"
+          open={showInfo}
+          onClose={() => setShowInfo(false)}
+          sx={{ "& .MuiDrawer-paper": { width: 300, top: { xs: "56px", sm: "64px" }, height: { xs: "calc(100vh - 56px)", sm: "calc(100vh - 64px)" } } }}
+        >
+          {infoPane}
+        </Drawer>
       )}
     </Box>
   );

@@ -51,7 +51,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
   const availableViews = useMemo<CalendarViewKind[]>(() => {
     if (!isMd) return ["day", "3day", "month", "agenda"];
     if (layout === "large") return ["week7", "month", "agenda"];
-    return ["week5", "month", "agenda"];
+    return ["week5", "week7", "month", "agenda"];
   }, [isMd, layout]);
 
   const [view, setView] = useState<CalendarViewKind>(() =>
@@ -63,8 +63,22 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
   );
 
   // If the view becomes unavailable on breakpoint change, fall back.
+  const gridDayCounts: Record<string, number> = { day: 1, "3day": 3, week5: 5, week7: 7 };
   useEffect(() => {
     if (!availableViews.includes(view)) {
+      const currentDays = gridDayCounts[view];
+      if (currentDays) {
+        const gridViews = availableViews.filter((v) => v in gridDayCounts);
+        if (gridViews.length > 0) {
+          // Sizing down: current has more days → pick most days available
+          // Sizing up: current has fewer days → pick fewest days available
+          const pick = currentDays > gridDayCounts[gridViews[0]]
+            ? gridViews[gridViews.length - 1]
+            : gridViews[0];
+          setView(pick);
+          return;
+        }
+      }
       setView(availableViews[0]);
     }
   }, [availableViews, view]);
@@ -119,17 +133,17 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     return `${format(first, "MMM d")}-${format(last, "MMM d, yyyy")}`;
   }, [view, anchor, gridDays]);
 
-  const gridLength = gridDays.length;
+  const step = view === "week5" || view === "week7" ? 7 : gridDays.length;
   const goPrev = useCallback(() => {
     if (view === "month") setAnchor((a) => addMonths(a, -1));
     else if (view === "agenda") setAnchor((a) => addDays(a, -14));
-    else setAnchor((a) => addDays(a, -gridLength));
-  }, [view, gridLength]);
+    else setAnchor((a) => addDays(a, -step));
+  }, [view, step]);
   const goNext = useCallback(() => {
     if (view === "month") setAnchor((a) => addMonths(a, 1));
     else if (view === "agenda") setAnchor((a) => addDays(a, 14));
-    else setAnchor((a) => addDays(a, gridLength));
-  }, [view, gridLength]);
+    else setAnchor((a) => addDays(a, step));
+  }, [view, step]);
   const goToday = useCallback(() => setAnchor(new Date()), []);
 
   useEffect(() => {
