@@ -535,7 +535,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                       px: 2,
                       borderBottom: "1px solid",
                       borderColor: "divider",
-                      "&.Mui-selected": { bgcolor: "action.selected" },
                     }}
                   >
                     <ListItemAvatar>
