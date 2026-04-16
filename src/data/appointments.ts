@@ -8,6 +8,7 @@ export interface Appointment {
   end: string;
   location?: string;
   description?: string;
+  allDay?: boolean;
 }
 
 function iso(dayOffset: number, hour: number, minute = 0): string {
@@ -46,6 +47,8 @@ export const appointments: Appointment[] = [
   { id: "apt-12", accountEmail: JANE, title: "Birthday dinner", start: iso(6, 19, 0), end: iso(6, 22, 0), location: "Osteria Verde" },
   { id: "apt-13", accountEmail: JANE, title: "Book club", start: iso(2, 19, 0), end: iso(2, 20, 30), location: "Library" },
   { id: "apt-14", accountEmail: JANE, title: "Personal trainer", start: iso(4, 7, 0), end: iso(4, 8, 0), location: "Gym" },
+  { id: "apt-15", accountEmail: JOHN, title: "Company off-site", start: iso(1, 0, 0), end: iso(1, 23, 59), allDay: true },
+  { id: "apt-16", accountEmail: JANE, title: "Vacation day", start: iso(3, 0, 0), end: iso(3, 23, 59), allDay: true },
 ];
 
 export { accounts };

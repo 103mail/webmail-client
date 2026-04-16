@@ -575,7 +575,7 @@ export function App() {
         )}
 
         {section === "calendar" && (
-          <Box sx={{ flexGrow: 1, overflow: "auto" }}>
+          <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CalendarView />
           </Box>
         )}
