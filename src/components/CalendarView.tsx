@@ -106,17 +106,17 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       return format(anchor, "MMMM yyyy");
     }
     if (view === "agenda") {
-      return `${format(anchor, "MMM d, yyyy")} –`;
+      return `${format(anchor, "MMM d, yyyy")}`;
     }
     if (gridDays.length === 1) {
-      return format(gridDays[0], "EEEE, MMMM d, yyyy");
+      return format(gridDays[0], "MMMM d, yyyy");
     }
     const first = gridDays[0];
     const last = gridDays[gridDays.length - 1];
     if (isSameMonth(first, last)) {
-      return `${format(first, "MMMM d")} – ${format(last, "d, yyyy")}`;
+      return `${format(first, "MMMM d")}-${format(last, "d, yyyy")}`;
     }
-    return `${format(first, "MMM d")} – ${format(last, "MMM d, yyyy")}`;
+    return `${format(first, "MMM d")}-${format(last, "MMM d, yyyy")}`;
   }, [view, anchor, gridDays]);
 
   const gridLength = gridDays.length;
