@@ -1,7 +1,7 @@
 import { addDays, startOfDay, startOfMonth, startOfWeek, endOfMonth, endOfWeek } from "date-fns";
 import type { CalendarEvent } from "./types";
 
-export const HOUR_HEIGHT = 48;
+export const HOUR_HEIGHT = 80;
 export const DAY_START_HOUR = 0;
 export const DAY_END_HOUR = 24;
 

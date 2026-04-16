@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Box, Typography, alpha, useTheme } from "@mui/material";
-import { format, getISOWeek } from "date-fns";
+import { format, getISOWeek, startOfDay } from "date-fns";
 import type { CalendarEvent } from "./types";
 import {
   DAY_END_HOUR,
@@ -25,6 +25,7 @@ const BUSINESS_END = 17;
 export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps) {
   const theme = useTheme();
   const today = new Date();
+  const todayStart = startOfDay(today).getTime();
 
   const hours = useMemo(() => {
     const arr: number[] = [];
@@ -82,7 +83,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                 textAlign: "center",
                 borderLeft: `1px solid ${theme.palette.divider}`,
                 ...(isToday && {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                  borderTop: `4px solid ${theme.palette.primary.main}`,
                 }),
               }}
             >
@@ -136,16 +137,14 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
         </Box>
         {days.map((day) => {
           const allDayEvents = eventsForDay(events, day).filter((e) => e.allDay);
-          const isToday = isSameDay(day, today);
           return (
             <Box
               key={day.toISOString()}
               sx={{
                 borderLeft: `1px solid ${theme.palette.divider}`,
                 px: 0.5,
-                ...(isToday && {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
-                }),
+                minWidth: 0,
+                overflow: "hidden",
                 py: 0.25,
                 display: "flex",
                 flexDirection: "column",
@@ -204,11 +203,11 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                   position: "absolute",
                   top: (h - DAY_START_HOUR) * HOUR_HEIGHT - 7,
                   right: 6,
-                  fontSize: 11,
-                  color: "text.secondary",
                 }}
               >
-                {h === 0 ? "" : format(new Date(2000, 0, 1, h), "HH:mm")}
+                <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
+                  {h === 0 ? "" : format(new Date(2000, 0, 1, h), "HH:mm")}
+                </Typography>
               </Box>
             ))}
           </Box>
@@ -218,6 +217,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
             const dayEvents = eventsForDay(events, day).filter((e) => !e.allDay);
             const overlaps = layoutOverlaps(dayEvents);
             const isToday = isSameDay(day, today);
+            const isPast = startOfDay(day).getTime() < todayStart;
             return (
               <Box
                 key={day.toISOString()}
@@ -225,9 +225,6 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                   position: "relative",
                   height: gridHeight,
                   borderLeft: `1px solid ${theme.palette.divider}`,
-                  ...(isToday && {
-                    bgcolor: alpha(theme.palette.primary.main, 0.04),
-                  }),
                 }}
               >
                 {hours.map((h) => (
@@ -240,9 +237,24 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                       right: 0,
                       height: HOUR_HEIGHT,
                       borderTop: h === DAY_START_HOUR ? "none" : `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-                      ...((h < BUSINESS_START || h >= BUSINESS_END) && {
+                      ...(isPast || (h < BUSINESS_START || h >= BUSINESS_END)) && {
                         bgcolor: alpha(theme.palette.text.primary, 0.03),
-                      }),
+                      },
+                    }}
+                  />
+                ))}
+
+                {/* Half-hour lines */}
+                {hours.map((h) => (
+                  <Box
+                    key={`half-${h}`}
+                    sx={{
+                      position: "absolute",
+                      top: (h - DAY_START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2,
+                      left: 0,
+                      right: 0,
+                      height: 0,
+                      borderTop: `1px dashed ${alpha(theme.palette.divider, 0.4)}`,
                     }}
                   />
                 ))}
@@ -287,6 +299,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                   const height = Math.max(18, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
                   const widthPct = 100 / layout.cols;
                   const leftPct = layout.col * widthPct;
+                  const isLastCol = layout.col === layout.cols - 1;
                   return (
                     <Box
                       key={ev.id}
@@ -296,7 +309,9 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                         top,
                         height,
                         left: `calc(${leftPct}% + 2px)`,
-                        width: `calc(${widthPct}% - 4px)`,
+                        ...(isLastCol
+                          ? { right: 2 }
+                          : { width: `calc(${widthPct}% - 4px)` }),
                         bgcolor: ev.color,
                         color: "#fff",
                         borderRadius: 1,
@@ -308,6 +323,19 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                         zIndex: 2,
                         transition: theme.transitions.create(["box-shadow"]),
                         "&:hover": { boxShadow: 3 },
+                        ...(isPast && {
+                          "&::after": {
+                            content: '""',
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            bgcolor: "rgba(255, 255, 255, 0.6)",
+                            borderRadius: 1,
+                            pointerEvents: "none",
+                          },
+                        }),
                       }}
                     >
                       <Typography

@@ -1,4 +1,4 @@
-import { Box, Typography, alpha, useTheme } from "@mui/material";
+import { Box, Typography, useTheme } from "@mui/material";
 import { format, isSameMonth } from "date-fns";
 import type { CalendarEvent } from "./types";
 import { eventsForDay, isSameDay, monthGrid } from "./utils";
@@ -87,9 +87,10 @@ export function MonthView({ anchor, events, onSelectEvent, onSelectDay }: MonthV
                 cursor: onSelectDay ? "pointer" : "default",
                 bgcolor: !inMonth
                   ? theme.palette.action.hover
-                  : isToday
-                    ? alpha(theme.palette.primary.main, 0.08)
-                    : "transparent",
+                  : "transparent",
+                boxShadow: isToday
+                  ? `inset 0 0 0 2px ${theme.palette.primary.main}`
+                  : "none",
               }}
             >
               <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
@@ -126,6 +127,7 @@ export function MonthView({ anchor, events, onSelectEvent, onSelectDay }: MonthV
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     cursor: "pointer",
+                    fontFamily: theme.typography.fontFamily,
                   }}
                   title={ev.title}
                 >
