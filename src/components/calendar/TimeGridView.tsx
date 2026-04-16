@@ -11,19 +11,25 @@ import {
   layoutOverlaps,
   minutesFromStart,
 } from "./utils";
+import { useTimeGridDrag } from "./useTimeGridDrag";
 
 interface TimeGridViewProps {
   days: Date[];
   events: CalendarEvent[];
   onSelectEvent?: (ev: CalendarEvent) => void;
+  onCreateEvent?: (start: Date, end: Date) => void;
 }
 
 const GUTTER_WIDTH = 56;
 const BUSINESS_START = 9;
 const BUSINESS_END = 17;
 
-export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps) {
+export function TimeGridView({ days, events, onSelectEvent, onCreateEvent }: TimeGridViewProps) {
   const theme = useTheme();
+  const { drag, scrollRef, setColRef, handleMouseDown } = useTimeGridDrag(
+    days,
+    (start, end) => onCreateEvent?.(start, end),
+  );
   const today = new Date();
   const todayStart = startOfDay(today).getTime();
 
@@ -184,7 +190,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
       </Box>
 
       {/* Scrollable body */}
-      <Box sx={{ flexGrow: 1, overflow: "auto", minHeight: 0 }}>
+      <Box ref={scrollRef} sx={{ flexGrow: 1, overflow: "auto", minHeight: 0, ...(drag && { userSelect: "none" }) }}>
         <Box
           sx={{
             display: "grid",
@@ -211,19 +217,29 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
           </Box>
 
           {/* Day columns */}
-          {days.map((day) => {
+          {days.map((day, dayIndex) => {
             const dayEvents = eventsForDay(events, day).filter((e) => !e.allDay);
             const overlaps = layoutOverlaps(dayEvents);
             const isToday = isSameDay(day, today);
             const isPast = startOfDay(day).getTime() < todayStart;
             const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+            const dragPreview = drag && drag.dayIndex === dayIndex;
+            const rawStart = dragPreview ? Math.min(drag.startMinute, drag.currentMinute) : 0;
+            const rawEnd = dragPreview ? Math.max(drag.startMinute, drag.currentMinute) : 0;
+            const previewStartMin = rawStart;
+            const previewEndMin = rawEnd - rawStart < 30 ? rawStart + 30 : rawEnd;
+            const previewTop = ((previewStartMin - DAY_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+            const previewHeight = ((previewEndMin - previewStartMin) / 60) * HOUR_HEIGHT;
             return (
               <Box
+                ref={setColRef(dayIndex)}
                 key={day.toISOString()}
+                onMouseDown={(e) => handleMouseDown(dayIndex, e)}
                 sx={{
                   position: "relative",
                   height: gridHeight,
                   borderLeft: `1px solid ${theme.palette.divider}`,
+                  cursor: drag ? "row-resize" : "crosshair",
                 }}
               >
                 {hours.map((h) => (
@@ -284,6 +300,33 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                 )}
 
                 {/* Events */}
+                {/* Drag preview */}
+                {dragPreview && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: previewTop,
+                      height: previewHeight,
+                      left: 2,
+                      right: 2,
+                      bgcolor: alpha(theme.palette.primary.main, 0.25),
+                      border: `2px dashed ${theme.palette.primary.main}`,
+                      borderRadius: 1,
+                      boxSizing: "border-box",
+                      zIndex: 3,
+                      pointerEvents: "none",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      px: 0.8,
+                      py: 0.3,
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: "primary.main" }}>
+                      {`${String(Math.floor(previewStartMin / 60)).padStart(2, "0")}:${String(previewStartMin % 60).padStart(2, "0")} – ${String(Math.floor(previewEndMin / 60)).padStart(2, "0")}:${String(previewEndMin % 60).padStart(2, "0")}`}
+                    </Typography>
+                  </Box>
+                )}
+
                 {dayEvents.map((ev) => {
                   const layout = overlaps.get(ev.id) ?? { col: 0, cols: 1 };
                   const startMin = Math.max(
@@ -302,6 +345,7 @@ export function TimeGridView({ days, events, onSelectEvent }: TimeGridViewProps)
                   return (
                     <Box
                       key={ev.id}
+                      onMouseDown={(e) => e.stopPropagation()}
                       onClick={() => onSelectEvent?.(ev)}
                       sx={{
                         position: "absolute",

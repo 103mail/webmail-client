@@ -19,6 +19,7 @@ import { accounts } from "../data/accounts";
 import { appointments, accountColors } from "../data/appointments";
 import { AccountsPanel } from "./calendar/AccountsPanel";
 import { AgendaView } from "./calendar/AgendaView";
+import { EventEditDialog } from "./calendar/EventEditDialog";
 import { MonthView } from "./calendar/MonthView";
 import { TimeGridView } from "./calendar/TimeGridView";
 import type { CalendarEvent, CalendarViewKind } from "./calendar/types";
@@ -61,6 +62,8 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
   const [enabledAccounts, setEnabledAccounts] = useState<Set<string>>(
     () => new Set(accounts.map((a) => a.email)),
   );
+  const [editDialog, setEditDialog] = useState<{ start: Date; end: Date } | null>(null);
+  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
 
   // If the view becomes unavailable on breakpoint change, fall back.
   const gridDayCounts: Record<string, number> = { day: 1, "3day": 3, week5: 5, week7: 7 };
@@ -84,8 +87,8 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
   }, [availableViews, view]);
 
   const events = useMemo<CalendarEvent[]>(
-    () =>
-      appointments
+    () => [
+      ...appointments
         .filter((a) => enabledAccounts.has(a.accountEmail))
         .map((a) => ({
           id: a.id,
@@ -98,8 +101,29 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
           allDay: a.allDay,
           color: accountColors[a.accountEmail] ?? "#607d8b",
         })),
-    [enabledAccounts],
+      ...localEvents,
+    ],
+    [enabledAccounts, localEvents],
   );
+
+  const handleCreateEvent = useCallback((start: Date, end: Date) => {
+    setEditDialog({ start, end });
+  }, []);
+
+  const handleSaveEvent = useCallback((data: { title: string; start: Date; end: Date; location: string; description: string }) => {
+    const defaultAccount = accounts[0]?.email ?? "";
+    const newEvent: CalendarEvent = {
+      id: `local-${Date.now()}`,
+      accountEmail: defaultAccount,
+      title: data.title,
+      start: data.start,
+      end: data.end,
+      location: data.location || undefined,
+      description: data.description || undefined,
+      color: accountColors[defaultAccount] ?? "#607d8b",
+    };
+    setLocalEvents((prev) => [...prev, newEvent]);
+  }, []);
 
   const toggleAccount = (email: string) => {
     setEnabledAccounts((prev) => {
@@ -179,7 +203,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       );
     if (view === "agenda")
       return <AgendaView anchor={anchor} events={events} />;
-    return <TimeGridView days={gridDays} events={events} />;
+    return <TimeGridView days={gridDays} events={events} onCreateEvent={handleCreateEvent} />;
   })();
 
   const main = (
@@ -192,6 +216,16 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       colors={accountColors}
       enabled={enabledAccounts}
       onToggle={toggleAccount}
+    />
+  );
+
+  const eventDialog = editDialog && (
+    <EventEditDialog
+      open
+      initialStart={editDialog.start}
+      initialEnd={editDialog.end}
+      onClose={() => setEditDialog(null)}
+      onSave={handleSaveEvent}
     />
   );
 
@@ -211,6 +245,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
           <Divider />
         </Box>
         <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>{main}</Box>
+        {eventDialog}
       </Box>
     );
   }
@@ -233,6 +268,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
         {accountsPanel}
       </Drawer>
       {main}
+      {eventDialog}
     </>
   );
 }
