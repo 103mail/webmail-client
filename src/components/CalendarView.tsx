@@ -62,7 +62,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
   const [enabledAccounts, setEnabledAccounts] = useState<Set<string>>(
     () => new Set(accounts.map((a) => a.email)),
   );
-  const [editDialog, setEditDialog] = useState<{ start: Date; end: Date; title?: string; location?: string; description?: string; allDay?: boolean; editId?: string } | null>(null);
+  const [editDialog, setEditDialog] = useState<{ start: Date; end: Date; title?: string; location?: string; description?: string; allDay?: boolean; accountEmail?: string; editId?: string } | null>(null);
   const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
 
   // If the view becomes unavailable on breakpoint change, fall back.
@@ -126,32 +126,32 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       location: ev.location,
       description: ev.description,
       allDay: ev.allDay,
+      accountEmail: ev.accountEmail,
       editId: ev.id,
     });
   }, []);
 
-  const handleSaveEvent = useCallback((data: { title: string; start: Date; end: Date; location: string; description: string; allDay: boolean }) => {
+  const handleSaveEvent = useCallback((data: { title: string; start: Date; end: Date; location: string; description: string; allDay: boolean; accountEmail: string }) => {
     const editId = editDialog?.editId;
     if (editId) {
       setLocalEvents((prev) =>
         prev.map((ev) =>
           ev.id === editId
-            ? { ...ev, title: data.title, start: data.start, end: data.end, location: data.location || undefined, description: data.description || undefined, allDay: data.allDay || undefined }
+            ? { ...ev, title: data.title, start: data.start, end: data.end, location: data.location || undefined, description: data.description || undefined, allDay: data.allDay || undefined, accountEmail: data.accountEmail, color: accountColors[data.accountEmail] ?? "#607d8b" }
             : ev,
         ),
       );
     } else {
-      const defaultAccount = accounts[0]?.email ?? "";
       const newEvent: CalendarEvent = {
         id: `local-${Date.now()}`,
-        accountEmail: defaultAccount,
+        accountEmail: data.accountEmail,
         title: data.title,
         start: data.start,
         end: data.end,
         location: data.location || undefined,
         description: data.description || undefined,
         allDay: data.allDay || undefined,
-        color: accountColors[defaultAccount] ?? "#607d8b",
+        color: accountColors[data.accountEmail] ?? "#607d8b",
       };
       setLocalEvents((prev) => [...prev, newEvent]);
     }
@@ -269,6 +269,8 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       initialLocation={editDialog.location}
       initialDescription={editDialog.description}
       initialAllDay={editDialog.allDay}
+      initialAccountEmail={editDialog.accountEmail}
+      accounts={accounts.map((a) => ({ email: a.email, color: accountColors[a.email] ?? "#607d8b" }))}
       onClose={() => setEditDialog(null)}
       onSave={handleSaveEvent}
       onDelete={editDialog.editId ? handleDeleteEvent : undefined}

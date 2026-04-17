@@ -21,6 +21,11 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { format } from "date-fns";
 
+interface AccountOption {
+  email: string;
+  color: string;
+}
+
 interface EventEditDialogProps {
   open: boolean;
   initialStart: Date;
@@ -29,8 +34,10 @@ interface EventEditDialogProps {
   initialLocation?: string;
   initialDescription?: string;
   initialAllDay?: boolean;
+  initialAccountEmail?: string;
+  accounts?: AccountOption[];
   onClose: () => void;
-  onSave: (data: { title: string; start: Date; end: Date; location: string; description: string; allDay: boolean }) => void;
+  onSave: (data: { title: string; start: Date; end: Date; location: string; description: string; allDay: boolean; accountEmail: string }) => void;
   onDelete?: () => void;
 }
 
@@ -72,7 +79,7 @@ function minutesToTime(m: number) {
   return `${String(Math.floor(clamped / 60)).padStart(2, "0")}:${String(clamped % 60).padStart(2, "0")}`;
 }
 
-export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, initialLocation, initialDescription, initialAllDay, onClose, onSave, onDelete }: EventEditDialogProps) {
+export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, initialLocation, initialDescription, initialAllDay, initialAccountEmail, accounts: accountOptions, onClose, onSave, onDelete }: EventEditDialogProps) {
   const theme = useTheme();
   const fullScreen = !useMediaQuery(theme.breakpoints.up("md"));
   const [title, setTitle] = useState(initialTitle ?? "");
@@ -85,6 +92,7 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
     return String(endMin <= startMin ? endMin + 24 * 60 : endMin);
   });
   const [allDay, setAllDay] = useState(initialAllDay ?? false);
+  const [accountEmail, setAccountEmail] = useState(initialAccountEmail ?? accountOptions?.[0]?.email ?? "");
   const [location, setLocation] = useState(initialLocation ?? "");
   const [description, setDescription] = useState(initialDescription ?? "");
 
@@ -127,7 +135,7 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
       start = new Date(sy, sm - 1, sd, sh, smi);
       end = new Date(sy, sm - 1, sd + endDays, Math.floor(endMinOfDay / 60), endMinOfDay % 60);
     }
-    onSave({ title: title || "(No title)", start, end, location, description, allDay });
+    onSave({ title: title || "(No title)", start, end, location, description, allDay, accountEmail });
     onClose();
   };
 
@@ -162,6 +170,24 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
             autoFocus
             fullWidth
           />
+          {accountOptions && accountOptions.length > 1 && (
+            <TextField
+              label="Account"
+              select
+              value={accountEmail}
+              onChange={(e) => setAccountEmail(e.target.value)}
+              fullWidth
+            >
+              {accountOptions.map((a) => (
+                <MenuItem key={a.email} value={a.email}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: a.color, flexShrink: 0 }} />
+                    {a.email}
+                  </Box>
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <TextField
               label={allDay ? "Start date" : "Date"}
