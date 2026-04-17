@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Box, Typography, alpha, useTheme } from "@mui/material";
 import { format, getISOWeek, startOfDay } from "date-fns";
 import type { CalendarEvent } from "./types";
@@ -18,7 +18,7 @@ interface TimeGridViewProps {
   events: CalendarEvent[];
   onSelectEvent?: (ev: CalendarEvent) => void;
   onCreateEvent?: (start: Date, end: Date) => void;
-  onCreateAllDay?: (day: Date) => void;
+  onCreateAllDay?: (startDay: Date, endDay: Date) => void;
 }
 
 const GUTTER_WIDTH = 56;
@@ -27,6 +27,51 @@ const BUSINESS_END = 17;
 
 export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCreateAllDay }: TimeGridViewProps) {
   const theme = useTheme();
+
+  // All-day drag state
+  const [allDayDrag, setAllDayDrag] = useState<{ startIdx: number; currentIdx: number } | null>(null);
+  const allDayDragRef = useRef<{ startIdx: number; currentIdx: number } | null>(null);
+
+  const handleAllDayMouseDown = useCallback((dayIndex: number, e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const state = { startIdx: dayIndex, currentIdx: dayIndex };
+    allDayDragRef.current = state;
+    setAllDayDrag(state);
+
+    const onMove = (me: MouseEvent) => {
+      const prev = allDayDragRef.current;
+      if (!prev) return;
+      // Find which day cell the mouse is over
+      const target = document.elementFromPoint(me.clientX, me.clientY);
+      if (!target) return;
+      const cell = (target as HTMLElement).closest("[data-allday-idx]") as HTMLElement | null;
+      if (!cell) return;
+      const idx = Number(cell.dataset.alldayIdx);
+      if (idx !== prev.currentIdx) {
+        const next = { ...prev, currentIdx: idx };
+        allDayDragRef.current = next;
+        setAllDayDrag(next);
+      }
+    };
+
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      const final = allDayDragRef.current;
+      if (final) {
+        const startIdx = Math.min(final.startIdx, final.currentIdx);
+        const endIdx = Math.max(final.startIdx, final.currentIdx);
+        onCreateAllDay?.(days[startIdx], days[endIdx]);
+      }
+      allDayDragRef.current = null;
+      setAllDayDrag(null);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [days, onCreateAllDay]);
+
   const { drag, scrollRef, setColRef, handleMouseDown } = useTimeGridDrag(
     days,
     (start, end) => onCreateEvent?.(start, end),
@@ -140,12 +185,16 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
             all-day
           </Typography>
         </Box>
-        {days.map((day) => {
+        {days.map((day, dayIndex) => {
           const allDayEvents = eventsForDay(events, day).filter((e) => e.allDay);
+          const adStart = allDayDrag ? Math.min(allDayDrag.startIdx, allDayDrag.currentIdx) : -1;
+          const adEnd = allDayDrag ? Math.max(allDayDrag.startIdx, allDayDrag.currentIdx) : -1;
+          const inDragRange = allDayDrag && dayIndex >= adStart && dayIndex <= adEnd;
           return (
             <Box
               key={day.toISOString()}
-              onClick={() => onCreateAllDay?.(day)}
+              data-allday-idx={dayIndex}
+              onMouseDown={(e) => handleAllDayMouseDown(dayIndex, e)}
               sx={{
                 borderLeft: `1px solid ${theme.palette.divider}`,
                 px: "2px",
@@ -156,6 +205,8 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
                 flexDirection: "column",
                 gap: 0.25,
                 cursor: "pointer",
+                ...(inDragRange && { bgcolor: alpha(theme.palette.primary.main, 0.15) }),
+                ...(allDayDrag && { userSelect: "none" }),
               }}
             >
               {allDayEvents.map((ev) => (

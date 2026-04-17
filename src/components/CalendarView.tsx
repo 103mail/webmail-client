@@ -110,10 +110,10 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     setEditDialog({ start, end });
   }, []);
 
-  const handleCreateAllDay = useCallback((day: Date) => {
-    const start = new Date(day);
+  const handleCreateAllDay = useCallback((startDay: Date, endDay: Date) => {
+    const start = new Date(startDay);
     start.setHours(0, 0, 0, 0);
-    const end = new Date(day);
+    const end = new Date(endDay);
     end.setHours(23, 59, 0, 0);
     setEditDialog({ start, end, allDay: true });
   }, []);
