@@ -9,6 +9,7 @@ import {
   Paper,
   TextField,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/Send";
 import { FileAttachments } from "./FileAttachments";
@@ -231,8 +232,8 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               <Button variant="contained" startIcon={<SendIcon />} disabled={forwardTo.length === 0}>
                 Forward
               </Button>
-              <Button variant="text" color="inherit" startIcon={<DeleteIcon />} onClick={handleDiscardForward}>
-                Discard
+              <Button variant="text" color="inherit" startIcon={<CloseIcon />} onClick={handleDiscardForward}>
+                Cancel
               </Button>
             </Box>
           </Paper>
