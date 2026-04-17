@@ -35,6 +35,7 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DescriptionIcon from "@mui/icons-material/Description";
 import DownloadIcon from "@mui/icons-material/Download";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import type { Chat, ChatAttachment, ChatImage, ChatMessage } from "../types";
 import { sampleChats, participantMap } from "../data/chats";
 import { accounts } from "../data/accounts";
@@ -599,6 +600,9 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                               );
                             })()}
                           </Typography>
+                          {mutedChats.has(chat.id) && (
+                            <VolumeOffIcon sx={{ ml: 1, color: "text.secondary", fontSize: 18, flexShrink: 0 }} />
+                          )}
                           {chat.unreadCount > 0 && (
                             <Badge badgeContent={chat.unreadCount} color="primary" sx={{ ml: 1.5, mr: 1.2, flexShrink: 0 }} />
                           )}

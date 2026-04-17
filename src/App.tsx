@@ -431,7 +431,7 @@ export function App() {
                 <>
                   <Tooltip title={chatHeader!.isMuted ? "Unmute" : "Mute"}>
                     <IconButton color="inherit" aria-label="toggle mute" onClick={chatHeader!.onToggleMute}>
-                      {chatHeader!.isMuted ? <VolumeOffIcon /> : <VolumeUpIcon />}
+                      {chatHeader!.isMuted ? <VolumeUpIcon /> : <VolumeOffIcon />}
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete chat">
