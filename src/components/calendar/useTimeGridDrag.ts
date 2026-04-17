@@ -10,9 +10,10 @@ export interface DragState {
   currentMinute: number;
 }
 
-function yToMinute(y: number): number {
+function yToMinute(y: number, round: "floor" | "round" = "round"): number {
   const raw = (y / HOUR_HEIGHT) * 60 + DAY_START_HOUR * 60;
-  return Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
+  const fn = round === "floor" ? Math.floor : Math.round;
+  return fn(raw / SNAP_MINUTES) * SNAP_MINUTES;
 }
 
 export function useTimeGridDrag(
@@ -34,7 +35,7 @@ export function useTimeGridDrag(
 
       const scrollRect = scroll.getBoundingClientRect();
       const offsetY = e.clientY - scrollRect.top + scroll.scrollTop;
-      const minute = yToMinute(offsetY);
+      const minute = yToMinute(offsetY, "floor");
 
       const state: DragState = { dayIndex, startMinute: minute, currentMinute: minute };
       dragRef.current = state;
