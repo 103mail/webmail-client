@@ -180,22 +180,27 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       : [];
 
   const title = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const needsYear = !isMd ? ((d: Date) => d.getFullYear() !== currentYear) : () => true;
+    const M = isMd ? "MMMM" : "MMM"; // full month on tablet/desktop, abbreviated on mobile
+    const Ms = isMd ? "MMM" : "MMM"; // short month (always abbreviated for multi-month ranges)
     if (view === "month") {
-      return format(anchor, "MMMM yyyy");
+      return format(anchor, `${M} yyyy`);
     }
     if (view === "agenda") {
-      return `${format(anchor, "MMM d, yyyy")}`;
+      return format(anchor, needsYear(anchor) ? `${M} d, yyyy` : `${M} d`);
     }
     if (gridDays.length === 1) {
-      return format(gridDays[0], "MMMM d, yyyy");
+      return format(gridDays[0], needsYear(gridDays[0]) ? `${M} d, yyyy` : `${M} d`);
     }
     const first = gridDays[0];
     const last = gridDays[gridDays.length - 1];
+    const showYear = needsYear(first) || needsYear(last);
     if (isSameMonth(first, last)) {
-      return `${format(first, "MMMM d")}-${format(last, "d, yyyy")}`;
+      return `${format(first, `${M} d`)}-${format(last, showYear ? "d, yyyy" : "d")}`;
     }
-    return `${format(first, "MMM d")}-${format(last, "MMM d, yyyy")}`;
-  }, [view, anchor, gridDays]);
+    return `${format(first, `${Ms} d`)}-${format(last, showYear ? `${Ms} d, yyyy` : `${Ms} d`)}`;
+  }, [view, anchor, gridDays, isMd]);
 
   const step = view === "week5" || view === "week7" ? 7 : gridDays.length;
   const goPrev = useCallback(() => {
