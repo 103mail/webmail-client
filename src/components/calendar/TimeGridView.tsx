@@ -18,13 +18,14 @@ interface TimeGridViewProps {
   events: CalendarEvent[];
   onSelectEvent?: (ev: CalendarEvent) => void;
   onCreateEvent?: (start: Date, end: Date) => void;
+  onCreateAllDay?: (day: Date) => void;
 }
 
 const GUTTER_WIDTH = 56;
 const BUSINESS_START = 9;
 const BUSINESS_END = 17;
 
-export function TimeGridView({ days, events, onSelectEvent, onCreateEvent }: TimeGridViewProps) {
+export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCreateAllDay }: TimeGridViewProps) {
   const theme = useTheme();
   const { drag, scrollRef, setColRef, handleMouseDown } = useTimeGridDrag(
     days,
@@ -144,6 +145,7 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent }: Tim
           return (
             <Box
               key={day.toISOString()}
+              onClick={() => onCreateAllDay?.(day)}
               sx={{
                 borderLeft: `1px solid ${theme.palette.divider}`,
                 px: "2px",
@@ -153,12 +155,13 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent }: Tim
                 display: "flex",
                 flexDirection: "column",
                 gap: 0.25,
+                cursor: "pointer",
               }}
             >
               {allDayEvents.map((ev) => (
                 <Box
                   key={ev.id}
-                  onClick={() => onSelectEvent?.(ev)}
+                  onClick={(e) => { e.stopPropagation(); onSelectEvent?.(ev); }}
                   sx={{
                     bgcolor: ev.color,
                     color: "#fff",

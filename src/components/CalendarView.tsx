@@ -62,7 +62,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
   const [enabledAccounts, setEnabledAccounts] = useState<Set<string>>(
     () => new Set(accounts.map((a) => a.email)),
   );
-  const [editDialog, setEditDialog] = useState<{ start: Date; end: Date; title?: string; location?: string; description?: string; editId?: string } | null>(null);
+  const [editDialog, setEditDialog] = useState<{ start: Date; end: Date; title?: string; location?: string; description?: string; allDay?: boolean; editId?: string } | null>(null);
   const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
 
   // If the view becomes unavailable on breakpoint change, fall back.
@@ -110,6 +110,14 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     setEditDialog({ start, end });
   }, []);
 
+  const handleCreateAllDay = useCallback((day: Date) => {
+    const start = new Date(day);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(day);
+    end.setHours(23, 59, 0, 0);
+    setEditDialog({ start, end, allDay: true });
+  }, []);
+
   const handleSelectEvent = useCallback((ev: CalendarEvent) => {
     setEditDialog({
       start: ev.start,
@@ -117,17 +125,18 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       title: ev.title,
       location: ev.location,
       description: ev.description,
+      allDay: ev.allDay,
       editId: ev.id,
     });
   }, []);
 
-  const handleSaveEvent = useCallback((data: { title: string; start: Date; end: Date; location: string; description: string }) => {
+  const handleSaveEvent = useCallback((data: { title: string; start: Date; end: Date; location: string; description: string; allDay: boolean }) => {
     const editId = editDialog?.editId;
     if (editId) {
       setLocalEvents((prev) =>
         prev.map((ev) =>
           ev.id === editId
-            ? { ...ev, title: data.title, start: data.start, end: data.end, location: data.location || undefined, description: data.description || undefined }
+            ? { ...ev, title: data.title, start: data.start, end: data.end, location: data.location || undefined, description: data.description || undefined, allDay: data.allDay || undefined }
             : ev,
         ),
       );
@@ -141,6 +150,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
         end: data.end,
         location: data.location || undefined,
         description: data.description || undefined,
+        allDay: data.allDay || undefined,
         color: accountColors[defaultAccount] ?? "#607d8b",
       };
       setLocalEvents((prev) => [...prev, newEvent]);
@@ -225,7 +235,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       );
     if (view === "agenda")
       return <AgendaView anchor={anchor} events={events} onSelectEvent={handleSelectEvent} />;
-    return <TimeGridView days={gridDays} events={events} onCreateEvent={handleCreateEvent} onSelectEvent={handleSelectEvent} />;
+    return <TimeGridView days={gridDays} events={events} onCreateEvent={handleCreateEvent} onCreateAllDay={handleCreateAllDay} onSelectEvent={handleSelectEvent} />;
   })();
 
   const main = (
@@ -250,6 +260,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       initialTitle={editDialog.title}
       initialLocation={editDialog.location}
       initialDescription={editDialog.description}
+      initialAllDay={editDialog.allDay}
       onClose={() => setEditDialog(null)}
       onSave={handleSaveEvent}
     />
