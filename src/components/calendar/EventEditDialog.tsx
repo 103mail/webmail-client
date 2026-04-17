@@ -18,6 +18,7 @@ import {
   useTheme,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { format } from "date-fns";
 
@@ -159,7 +160,17 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
           </Toolbar>
         </AppBar>
       ) : (
-        <DialogTitle sx={{ mt: 1 }}>{initialTitle ? "Edit Event" : "New Event"}</DialogTitle>
+        <DialogTitle sx={{ mt: 1, display: "flex", alignItems: "center", gap: 1, pr: 2 }}>
+          <Box sx={{ flexGrow: 1 }}>{initialTitle ? "Edit Event" : "New Event"}</Box>
+          {onDelete && (
+            <IconButton onClick={() => { onDelete(); onClose(); }} sx={{ mr: 1 }}>
+              <DeleteIcon />
+            </IconButton>
+          )}
+          <IconButton onClick={onClose}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
       )}
       <DialogContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
@@ -264,15 +275,6 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
       </DialogContent>
       {!fullScreen && (
         <DialogActions sx={{ px: 3, mt: -.5, mb: 1.5 }}>
-          {onDelete && (
-            <>
-              <IconButton color="error" onClick={() => { onDelete(); onClose(); }}>
-                <DeleteIcon />
-              </IconButton>
-              <Box sx={{ flex: 1 }} />
-            </>
-          )}
-          <Button onClick={onClose}>Cancel</Button>
           <Button variant="contained" onClick={handleSave}>Save</Button>
         </DialogActions>
       )}

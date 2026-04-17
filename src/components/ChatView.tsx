@@ -244,6 +244,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const conversationPaneRef = useRef<HTMLDivElement>(null);
   const [collapsedAccounts, setCollapsedAccounts] = useState<Set<string>>(new Set());
   const [mutedChats, setMutedChats] = useState<Set<string>>(new Set());
   const [searching, setSearching] = useState(false);
@@ -930,26 +931,31 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
       </Box>
 
       {/* Conversation */}
-      <Box sx={{ flexGrow: 1, minWidth: 0, overflow: "hidden" }}>
+      <Box ref={conversationPaneRef} sx={{ flexGrow: 1, minWidth: 0, overflow: "hidden", position: "relative" }}>
         {conversationPane}
+        {selectedChat && !threePane && (
+          <Drawer
+            anchor="right"
+            variant="temporary"
+            open={showInfo}
+            onClose={() => setShowInfo(false)}
+            ModalProps={{ container: conversationPaneRef.current, keepMounted: false }}
+            sx={{
+              position: "absolute",
+              "& .MuiBackdrop-root": { position: "absolute" },
+              "& .MuiDrawer-paper": { position: "absolute", width: 300 },
+            }}
+          >
+            {infoPane}
+          </Drawer>
+        )}
       </Box>
 
-      {/* Info panel — inline on desktop, drawer on tablet */}
+      {/* Info panel — inline on desktop */}
       {selectedChat && threePane && (
         <Box sx={{ width: 300, flexShrink: 0, overflow: "auto" }}>
           {infoPane}
         </Box>
-      )}
-      {selectedChat && !threePane && (
-        <Drawer
-          anchor="right"
-          variant="temporary"
-          open={showInfo}
-          onClose={() => setShowInfo(false)}
-          sx={{ "& .MuiDrawer-paper": { width: 300, top: { xs: "56px", sm: "64px" }, height: { xs: "calc(100vh - 56px)", sm: "calc(100vh - 64px)" } } }}
-        >
-          {infoPane}
-        </Drawer>
       )}
     </Box>
   );
