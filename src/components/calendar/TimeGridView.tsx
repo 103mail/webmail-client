@@ -171,6 +171,7 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
           gridTemplateColumns: `${GUTTER_WIDTH}px repeat(${days.length}, 1fr)`,
           borderBottom: `1px solid ${theme.palette.divider}`,
           minHeight: 28,
+          flexShrink: 0,
         }}
       >
         <Box
@@ -190,6 +191,8 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
           const adStart = allDayDrag ? Math.min(allDayDrag.startIdx, allDayDrag.currentIdx) : -1;
           const adEnd = allDayDrag ? Math.max(allDayDrag.startIdx, allDayDrag.currentIdx) : -1;
           const inDragRange = allDayDrag && dayIndex >= adStart && dayIndex <= adEnd;
+          const isAdFirst = inDragRange && dayIndex === adStart;
+          const isAdLast = inDragRange && dayIndex === adEnd;
           return (
             <Box
               key={day.toISOString()}
@@ -199,16 +202,44 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
                 borderLeft: `1px solid ${theme.palette.divider}`,
                 px: "2px",
                 minWidth: 0,
-                overflow: "hidden",
                 py: 0.5,
                 display: "flex",
                 flexDirection: "column",
                 gap: 0.25,
                 cursor: "pointer",
-                ...(inDragRange && { bgcolor: alpha(theme.palette.primary.main, 0.15) }),
+                position: "relative",
                 ...(allDayDrag && { userSelect: "none" }),
               }}
             >
+              {inDragRange && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: 2,
+                    bottom: 2,
+                    left: isAdFirst ? 2 : 0,
+                    right: isAdLast ? 2 : 0,
+                    bgcolor: alpha(theme.palette.primary.main, 0.25),
+                    borderTop: `2px dashed ${theme.palette.primary.main}`,
+                    borderBottom: `2px dashed ${theme.palette.primary.main}`,
+                    borderLeft: isAdFirst ? `2px dashed ${theme.palette.primary.main}` : "none",
+                    borderRight: isAdLast ? `2px dashed ${theme.palette.primary.main}` : "none",
+                    borderRadius: isAdFirst && isAdLast ? 1 : isAdFirst ? "4px 0 0 4px" : isAdLast ? "0 4px 4px 0" : 0,
+                    boxSizing: "border-box",
+                    pointerEvents: "none",
+                    zIndex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    px: 0.8,
+                  }}
+                >
+                  {isAdFirst && (
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: "primary.main", whiteSpace: "nowrap" }}>
+                      {format(days[adStart], "MMM d")} – {format(days[adEnd], "MMM d")}
+                    </Typography>
+                  )}
+                </Box>
+              )}
               {allDayEvents.map((ev) => (
                 <Box
                   key={ev.id}
