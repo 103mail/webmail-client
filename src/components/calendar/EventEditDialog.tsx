@@ -18,6 +18,7 @@ import {
   useTheme,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { format } from "date-fns";
 
 interface EventEditDialogProps {
@@ -30,6 +31,7 @@ interface EventEditDialogProps {
   initialAllDay?: boolean;
   onClose: () => void;
   onSave: (data: { title: string; start: Date; end: Date; location: string; description: string; allDay: boolean }) => void;
+  onDelete?: () => void;
 }
 
 function toTimeInput(d: Date) {
@@ -70,7 +72,7 @@ function minutesToTime(m: number) {
   return `${String(Math.floor(clamped / 60)).padStart(2, "0")}:${String(clamped % 60).padStart(2, "0")}`;
 }
 
-export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, initialLocation, initialDescription, initialAllDay, onClose, onSave }: EventEditDialogProps) {
+export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, initialLocation, initialDescription, initialAllDay, onClose, onSave, onDelete }: EventEditDialogProps) {
   const theme = useTheme();
   const fullScreen = !useMediaQuery(theme.breakpoints.up("md"));
   const [title, setTitle] = useState(initialTitle ?? "");
@@ -140,6 +142,11 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
             <Typography variant="h6" sx={{ flexGrow: 1 }}>
               {initialTitle ? "Edit Event" : "New Event"}
             </Typography>
+            {onDelete && (
+              <IconButton color="inherit" onClick={() => { onDelete(); onClose(); }}>
+                <DeleteIcon />
+              </IconButton>
+            )}
             <Button color="inherit" onClick={handleSave}>Save</Button>
           </Toolbar>
         </AppBar>
@@ -231,6 +238,14 @@ export function EventEditDialog({ open, initialStart, initialEnd, initialTitle, 
       </DialogContent>
       {!fullScreen && (
         <DialogActions sx={{ px: 3, mt: -.5, mb: 1.5 }}>
+          {onDelete && (
+            <>
+              <IconButton color="error" onClick={() => { onDelete(); onClose(); }}>
+                <DeleteIcon />
+              </IconButton>
+              <Box sx={{ flex: 1 }} />
+            </>
+          )}
           <Button onClick={onClose}>Cancel</Button>
           <Button variant="contained" onClick={handleSave}>Save</Button>
         </DialogActions>

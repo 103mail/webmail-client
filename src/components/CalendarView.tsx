@@ -157,6 +157,14 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     }
   }, [editDialog?.editId]);
 
+  const handleDeleteEvent = useCallback(() => {
+    const editId = editDialog?.editId;
+    if (editId) {
+      setLocalEvents((prev) => prev.filter((ev) => ev.id !== editId));
+    }
+    setEditDialog(null);
+  }, [editDialog?.editId]);
+
   const toggleAccount = (email: string) => {
     setEnabledAccounts((prev) => {
       const next = new Set(prev);
@@ -263,6 +271,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       initialAllDay={editDialog.allDay}
       onClose={() => setEditDialog(null)}
       onSave={handleSaveEvent}
+      onDelete={editDialog.editId ? handleDeleteEvent : undefined}
     />
   );
 
