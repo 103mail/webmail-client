@@ -633,6 +633,10 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           const sender = participantMap.get(msg.fromId);
           const showSender = selectedChat.isGroup && !isOwn;
           const showDate = shouldShowDateSeparator(selectedChat.messages[i - 1], msg);
+          const nextMsg = selectedChat.messages[i + 1];
+          const nextShowDate = nextMsg ? shouldShowDateSeparator(msg, nextMsg) : false;
+          const isSameSenderNext = nextMsg && !nextShowDate && nextMsg.fromId === msg.fromId;
+          const spacing = isSameSenderNext ? 0.25 : 1.5;
           return (
             <Box key={msg.id}>
               {i === unreadStart && (
@@ -649,11 +653,11 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                   <Chip label={formatDateLabel(msg.timestamp)} size="small" sx={{ bgcolor: "background.paper", fontSize: 12 }} />
                 </Box>
               )}
-              <Box sx={{ display: "flex", justifyContent: isOwn ? "flex-end" : "flex-start", mb: 0.5 }}>
+              <Box sx={{ display: "flex", justifyContent: isOwn ? "flex-end" : "flex-start", mb: spacing }}>
                 <Paper
                   variant="outlined"
                   sx={{
-                    px: 1.5,
+                    px: 3,
                     py: 0.8,
                     maxWidth: { xs: "85%", md: "65%" },
                     bgcolor: isOwn ? alpha(theme.palette.primary.main, 0.08) : "background.paper",
