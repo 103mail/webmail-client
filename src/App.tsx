@@ -678,16 +678,12 @@ export function App() {
           )
         )}
 
-        {section === "calendar" && (
-          <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <CalendarView drawerOpen={mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} onAccountClick={handleOpenAccount} />
-          </Box>
-        )}
-        {section === "chat" && (
-          <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
-            <ChatView onHeaderChange={setChatHeader} />
-          </Box>
-        )}
+        <Box sx={{ flexGrow: 1, flexDirection: "column", overflow: "hidden", display: section === "calendar" ? "flex" : "none" }}>
+          <CalendarView drawerOpen={mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} onAccountClick={handleOpenAccount} />
+        </Box>
+        <Box sx={{ flexGrow: 1, overflow: "hidden", display: section === "chat" ? "block" : "none" }}>
+          <ChatView onHeaderChange={setChatHeader} />
+        </Box>
       </Box>
 
       {/* FABs */}
