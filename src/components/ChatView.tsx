@@ -947,7 +947,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
             variant="temporary"
             open={showInfo}
             onClose={() => setShowInfo(false)}
-            ModalProps={{ container: conversationPaneRef.current, keepMounted: false }}
+            ModalProps={{ container: conversationPaneRef.current, keepMounted: false, disableScrollLock: true, disableAutoFocus: true, disableEnforceFocus: true, disableRestoreFocus: true }}
             sx={{
               position: "absolute",
               "& .MuiBackdrop-root": { position: "absolute" },
