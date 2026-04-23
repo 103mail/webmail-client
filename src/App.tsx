@@ -43,6 +43,9 @@ import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import SettingsIcon from "@mui/icons-material/Settings";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { sampleThreads } from "./data/messages";
 import { accounts } from "./data/accounts";
 import type { MailThread } from "./types";
@@ -71,6 +74,7 @@ export function App() {
   const [chatHeader, setChatHeader] = useState<ChatHeaderState | null>(null);
   const [calendarHeader, setCalendarHeader] = useState<CalendarHeaderState | null>(null);
   const [calViewAnchor, setCalViewAnchor] = useState<null | HTMLElement>(null);
+  const [chatListMenuAnchor, setChatListMenuAnchor] = useState<null | HTMLElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [profile, setProfile] = useState<AccountProfile>({
     fullName: "",
@@ -237,12 +241,13 @@ export function App() {
   const showChatBack = section === "chat" && Boolean(chatHeader?.onBack);
   const showBackArrow = showChatBack || (showMailToolbar && mailView === "thread" && !multiPane);
   const showHamburger = !showBackArrow && layout !== "large" && (section === "mail" || section === "calendar");
-  const showLogo = !showBackArrow && !showHamburger;
+  const showLogo = !showBackArrow && !showHamburger && !(section === "chat" && layout === "mobile" && !chatHeader?.title);
   const showSearchBar = showMailToolbar && (multiPane || mailView === "list");
   const showThreadActions = showMailToolbar && selectedThread && (multiPane ? mailView === "thread" : mailView === "thread");
   const showChatConvoActions = section === "chat" && chatHeader?.onToggleMute !== undefined;
   const showChatSearchBar = section === "chat" && Boolean(chatHeader?.showSearchButton);
   const chatSearching = showChatSearchBar && Boolean(chatHeader?.searching);
+  const showChatListMenu = section === "chat" && layout === "mobile" && !chatHeader?.title && !chatSearching;
 
   const mailList = (
     <MailList
@@ -441,6 +446,18 @@ export function App() {
                 )
               )}
 
+              {/* Chat list overflow menu (mobile only) */}
+              {showChatListMenu && (
+                <IconButton
+                  color="inherit"
+                  aria-label="more options"
+                  edge="end"
+                  onClick={(e) => setChatListMenuAnchor(e.currentTarget)}
+                >
+                  <MoreVertIcon />
+                </IconButton>
+              )}
+
               {/* Chat actions */}
               {showChatConvoActions && !chatSearching && (
                 <>
@@ -532,6 +549,27 @@ export function App() {
                 {f.name}
               </MenuItem>
             ))}
+        </Menu>
+        <Menu
+          anchorEl={chatListMenuAnchor}
+          open={Boolean(chatListMenuAnchor)}
+          onClose={() => setChatListMenuAnchor(null)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <MenuItem onClick={() => setChatListMenuAnchor(null)}>
+            <SettingsIcon fontSize="small" sx={{ mr: 1.5 }} />
+            Settings
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setChatListMenuAnchor(null);
+              handleOpenAccount();
+            }}
+          >
+            <AccountCircleIcon fontSize="small" sx={{ mr: 1.5 }} />
+            Account
+          </MenuItem>
         </Menu>
         <Menu
           anchorEl={calViewAnchor}
