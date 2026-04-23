@@ -679,7 +679,7 @@ export function App() {
         )}
 
         <Box sx={{ flexGrow: 1, flexDirection: "column", overflow: "hidden", display: section === "calendar" ? "flex" : "none" }}>
-          <CalendarView drawerOpen={mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} onAccountClick={handleOpenAccount} />
+          <CalendarView drawerOpen={section === "calendar" && mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} onAccountClick={handleOpenAccount} />
         </Box>
         <Box sx={{ flexGrow: 1, overflow: "hidden", display: section === "chat" ? "block" : "none" }}>
           <ChatView onHeaderChange={setChatHeader} />
