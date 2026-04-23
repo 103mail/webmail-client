@@ -43,9 +43,10 @@ interface CalendarViewProps {
   onDrawerClose: () => void;
   layout: "mobile" | "medium" | "large";
   onHeaderChange?: (state: CalendarHeaderState) => void;
+  onAccountClick?: () => void;
 }
 
-export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange }: CalendarViewProps) {
+export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange, onAccountClick }: CalendarViewProps) {
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -261,6 +262,8 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       colors={accountColors}
       enabled={enabledAccounts}
       onToggle={toggleAccount}
+      showSettingsAccount={layout === "mobile"}
+      onAccountClick={onAccountClick}
     />
   );
 
@@ -313,6 +316,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
           "& .MuiDrawer-paper": {
             width: ACCOUNTS_PANEL_WIDTH,
             mt: { xs: "56px", sm: "64px" },
+            height: { xs: "calc(100% - 56px)", sm: "calc(100% - 64px)" },
             ...(layout === "medium" && { ml: `${RAIL_WIDTH}px` }),
           },
         }}

@@ -34,6 +34,8 @@ import { CalendarView } from "./components/CalendarView";
 import type { CalendarHeaderState } from "./components/CalendarView";
 import { ChatView } from "./components/ChatView";
 import type { ChatHeaderState } from "./components/ChatView";
+import { AccountScreen } from "./components/AccountScreen";
+import type { AccountProfile } from "./components/AccountScreen";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TodayIcon from "@mui/icons-material/Today";
@@ -69,6 +71,18 @@ export function App() {
   const [chatHeader, setChatHeader] = useState<ChatHeaderState | null>(null);
   const [calendarHeader, setCalendarHeader] = useState<CalendarHeaderState | null>(null);
   const [calViewAnchor, setCalViewAnchor] = useState<null | HTMLElement>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [profile, setProfile] = useState<AccountProfile>({
+    fullName: "",
+    notificationEmail: accounts[0]?.email ?? "",
+    verifiedNotificationEmail: accounts[0]?.email ?? "",
+    notificationFrequency: "daily",
+    avatarDataUrl: undefined,
+  });
+  const handleOpenAccount = useCallback(() => {
+    setAccountOpen(true);
+    setMobileOpen(false);
+  }, []);
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
   const isXl = useMediaQuery(theme.breakpoints.up("xl"));
@@ -203,6 +217,7 @@ export function App() {
       selectedFolder={selectedFolder}
       onSelectFolder={handleSelectFolder}
       showSettingsAccount
+      onAccountClick={handleOpenAccount}
     />
   );
 
@@ -540,7 +555,7 @@ export function App() {
 
       {/* Section nav — icon rail (medium + large) */}
       {layout !== "mobile" && (
-        <SectionNav section={section} onChange={handleSectionChange} isDesktop />
+        <SectionNav section={section} onChange={handleSectionChange} isDesktop onAccountClick={handleOpenAccount} />
       )}
 
       {/* Mail folder drawer — temporary (mobile + medium) */}
@@ -627,7 +642,7 @@ export function App() {
 
         {section === "calendar" && (
           <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <CalendarView drawerOpen={mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} />
+            <CalendarView drawerOpen={mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} onAccountClick={handleOpenAccount} />
           </Box>
         )}
         {section === "chat" && (
@@ -663,6 +678,13 @@ export function App() {
       {layout === "mobile" && (
         <SectionNav section={section} onChange={handleSectionChange} isDesktop={false} />
       )}
+
+      <AccountScreen
+        open={accountOpen}
+        profile={profile}
+        onClose={() => setAccountOpen(false)}
+        onSave={setProfile}
+      />
     </Box>
   );
 }

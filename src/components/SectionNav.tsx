@@ -24,9 +24,10 @@ interface SectionNavProps {
   section: Section;
   onChange: (section: Section) => void;
   isDesktop: boolean;
+  onAccountClick?: () => void;
 }
 
-export function SectionNav({ section, onChange, isDesktop }: SectionNavProps) {
+export function SectionNav({ section, onChange, isDesktop, onAccountClick }: SectionNavProps) {
   if (isDesktop) {
     return (
       <>
@@ -71,7 +72,7 @@ export function SectionNav({ section, onChange, isDesktop }: SectionNavProps) {
           </IconButton>
         </Tooltip>
         <Tooltip title="Account" placement="right">
-          <IconButton size="large" aria-label="account" sx={{ mb: 1 }}>
+          <IconButton size="large" aria-label="account" sx={{ mb: 1 }} onClick={onAccountClick}>
             <AccountCircleIcon />
           </IconButton>
         </Tooltip>

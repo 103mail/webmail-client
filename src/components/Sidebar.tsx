@@ -18,9 +18,10 @@ interface SidebarProps {
   selectedFolder: string | null;
   onSelectFolder: (folderId: string) => void;
   showSettingsAccount?: boolean;
+  onAccountClick?: () => void;
 }
 
-export function Sidebar({ selectedFolder, onSelectFolder, showSettingsAccount = false }: SidebarProps) {
+export function Sidebar({ selectedFolder, onSelectFolder, showSettingsAccount = false, onAccountClick }: SidebarProps) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Toolbar />
@@ -70,7 +71,7 @@ export function Sidebar({ selectedFolder, onSelectFolder, showSettingsAccount = 
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
-              <ListItemButton>
+              <ListItemButton onClick={onAccountClick}>
                 <ListItemIcon>
                   <AccountCircleIcon />
                 </ListItemIcon>
