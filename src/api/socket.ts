@@ -126,8 +126,10 @@ export class ChatSocket {
       };
 
       socket.onmessage = (event) => {
-        // The proxy writes the response to every client frame back on the same
-        // socket, and a handler with nothing to say answers with an empty body.
+        // A handler with nothing to say answers with an empty body and the
+        // proxy sends no frame. Empty frames are still ignored here, because a
+        // proxy old enough to write them is a deployment that should keep
+        // working rather than show blank messages.
         if (typeof event.data !== "string" || event.data.trim() === "") return;
         try {
           this.handlers.onFrame(JSON.parse(event.data) as ServerFrame);
