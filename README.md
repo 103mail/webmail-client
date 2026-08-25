@@ -34,4 +34,9 @@ back to a development config. Point it at a running server:
 
     VITE_API_BASE=http://localhost:8080/api/v1 VITE_DOMAIN=103mail.com npm run dev
 
+Chat is live over a WebSocket rather than polled. `src/api/socket.ts` holds the
+connection and `src/api/useChatSocket.ts` turns its frames into the state the
+components already render. Connections terminate in a proxy rather than in the
+API, which is invisible from here; see the server's ADR 13 and ADR 18.
+
 For the full two-domain stack, see `../webmail-server/deploy/`.

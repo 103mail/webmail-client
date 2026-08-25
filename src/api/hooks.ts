@@ -27,6 +27,9 @@ export interface Async<T> {
   loading: boolean;
   error: Error | null;
   reload: () => void;
+  // Patches the loaded value in place, for the cases where something already
+  // knows what changed and a re-read would only add latency.
+  setData: (update: (previous: T) => T) => void;
 }
 
 // Runs `work` whenever `deps` change, keeping the previous value visible while
@@ -60,7 +63,8 @@ function useAsync<T>(work: () => Promise<T>, initial: T, deps: unknown[]): Async
   }, [...deps, nonce]);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
-  return { data, loading, error, reload };
+  const patch = useCallback((update: (previous: T) => T) => setData(update), []);
+  return { data, loading, error, reload, setData: patch };
 }
 
 /* ── mail ── */
@@ -216,11 +220,10 @@ export function useMeetings(
 
 /* ── chat ── */
 
-// ADR 13 puts realtime chat behind ws2api, which needs GET, POST and DELETE on
-// /<ClientId> in the API server. Those routes do not exist, so the client polls
-// instead. When the bridge lands this is the hook to replace, and nothing above
-// it has to change.
-const POLL_MS = 5000;
+// Chat is live over a WebSocket (server ADR 13 and ADR 18). The socket does not
+// own the chat state: it tells these hooks what changed, and they re-read or
+// patch what the components already render. That keeps one representation of a
+// chat message rather than a REST one and a socket one.
 
 export interface ChatList {
   chats: Chat[];
@@ -233,7 +236,7 @@ const NO_CHATS: ChatList = { chats: [], participants: new Map() };
 
 export function useChats(search: string): Async<ChatList> {
   const { user, api } = useSession();
-  const result = useAsync<ChatList>(
+  return useAsync<ChatList>(
     async () => {
       const chats = await api.chats(user.customerId, search || undefined);
       const participants = new Map<string, ChatParticipant>();
@@ -247,12 +250,11 @@ export function useChats(search: string): Async<ChatList> {
     NO_CHATS,
     [user.customerId, search]
   );
-
-  usePolling(result.reload);
-  return result;
 }
 
-export function useChatMessages(chatId: string | null): Async<ChatMessage[]> {
+export function useChatMessages(chatId: string | null): Async<ChatMessage[]> & {
+  append: (message: ChatMessage) => void;
+} {
   const { api } = useSession();
   const result = useAsync<ChatMessage[]>(
     async () => {
@@ -269,26 +271,17 @@ export function useChatMessages(chatId: string | null): Async<ChatMessage[]> {
     [chatId]
   );
 
-  usePolling(result.reload, chatId !== null);
-  return result;
-}
+  // A message arriving on the socket is appended rather than triggering a
+  // re-read: the frame carries the whole message, and re-reading would put a
+  // round trip between someone sending and everyone seeing it.
+  const append = useCallback((message: ChatMessage) => {
+    result.setData((previous) => {
+      if (previous.some((m) => m.id === message.id)) return previous;
+      return [...previous, message].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+    });
+  }, [result]);
 
-// Re-runs `reload` on an interval, and once immediately when the tab regains
-// focus so that coming back to a backgrounded tab is not stale for 5 seconds.
-function usePolling(reload: () => void, active = true) {
-  const latest = useRef(reload);
-  latest.current = reload;
-
-  useEffect(() => {
-    if (!active) return;
-    const tick = () => {
-      if (document.visibilityState === "visible") latest.current();
-    };
-    const timer = setInterval(tick, POLL_MS);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [active]);
+  return { ...result, append };
 }

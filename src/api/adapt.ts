@@ -147,7 +147,10 @@ export function toChat(chat: ApiChat, self: string, messages: ChatMessage[] = []
     participants: chat.participants.map((p) => p.email),
     messages,
     unreadCount: chat.unreadCount,
-    lastActivity: messages[messages.length - 1]?.timestamp ?? chat.createdAt,
+    // The listing knows when the chat last moved, which is what it has to sort
+    // by. Creation time is the fallback for a chat nobody has spoken in.
+    lastActivity:
+      messages[messages.length - 1]?.timestamp ?? chat.lastMessageAt ?? chat.createdAt,
     accountEmail: self,
   };
 }

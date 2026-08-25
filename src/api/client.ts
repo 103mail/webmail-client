@@ -10,6 +10,7 @@ import type {
   ApiCalendar,
   ApiChat,
   ApiChatMessage,
+  ApiChatSession,
   ApiContact,
   ApiFolder,
   ApiMailbox,
@@ -257,5 +258,11 @@ export class ApiClient {
 
   chatAttachment(attachmentId: number) {
     return this.get<ApiAttachment>(`/chat/attachment/${attachmentId}`);
+  }
+
+  // Mints the opaque ClientId a chat WebSocket is opened with. It is
+  // single-use, so a reconnect asks for a new one (server ADR 18).
+  chatSession() {
+    return this.post<ApiChatSession>("/chat/session", {});
   }
 }

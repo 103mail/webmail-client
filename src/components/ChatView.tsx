@@ -36,9 +36,10 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DescriptionIcon from "@mui/icons-material/Description";
 import DownloadIcon from "@mui/icons-material/Download";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
-import type { Chat, ChatAttachment, ChatImage, ChatMessage } from "../types";
+import type { Chat, ChatAttachment, ChatImage, ChatMessage, ChatParticipant } from "../types";
 import { useSession } from "../auth/AuthContext";
 import { useChats, useChatMessages } from "../api/hooks";
+import { useChatSocket } from "../api/useChatSocket";
 import { toUploads, toBlobUrl } from "../api/adapt";
 
 export interface ChatHeaderState {
@@ -80,6 +81,20 @@ const EMOJI_PICKS = [
   "❤️","🔥","💯","😢","😡","🤣","😊","🥳","🤩","😇",
   "👋","✅","💪","🙏","😬","🤷","💜","🚀","🎨","☕",
 ];
+
+// liveStatus reports the other party's presence in a direct chat. The socket
+// reports presence by user id and the chat lists participants by address, so
+// this falls back to whatever the participant record already said when the two
+// cannot be joined.
+function liveStatus(
+  chat: Chat,
+  me: string,
+  participants: Map<string, ChatParticipant>,
+  presence: Map<string, string>,
+): string {
+  const other = chat.participants.find((p) => p !== me) ?? "";
+  return presence.get(other) ?? participants.get(other)?.status ?? "";
+}
 
 /* ── Helpers ── */
 function getInitials(name: string) {
@@ -276,8 +291,20 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   // the WebSocket bridge ADR 13 describes is not implemented in the API server.
   const { data: chatData, reload: reloadChats } = useChats(activeFilter);
   const chatList = chatData.chats;
-  const { data: openMessages, reload: reloadMessages } = useChatMessages(selectedChatId);
+  const { data: openMessages, reload: reloadMessages, append } = useChatMessages(selectedChatId);
   const [sendError, setSendError] = useState("");
+
+  // The live connection. Messages arrive as frames and are appended; anything
+  // that changes a chat's own row, like an unread count, re-reads the list.
+  const socket = useChatSocket({
+    openChatId: selectedChatId,
+    onMessage: (chatId, message) => {
+      if (chatId === selectedChatId) append(message);
+      reloadChats();
+    },
+    onChatChanged: reloadChats,
+    onError: setSendError,
+  });
 
   // The open chat carries its messages; the rest carry none, which is all the
   // list needs beyond what the chat row itself reports.
@@ -326,12 +353,9 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedChat?.messages.length, selectedChatId]);
 
-  /* Opening a chat is what clears its unread count. The server does that when
-     the messages are read, so the list is simply re-read. */
-  useEffect(() => {
-    if (!selectedChat || selectedChat.unreadCount === 0) return;
-    reloadChats();
-  }, [selectedChatId, selectedChat, reloadChats]);
+  /* Opening a chat is what clears its unread count. useChatSocket sends the
+     read frame and re-reads the list once the server has acted on it, so there
+     is nothing to do here. */
 
   const handleSelectChat = useCallback((chatId: string) => {
     const chat = chats.find((c) => c.id === chatId);
@@ -369,9 +393,14 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
       onHeaderChange(base);
       return;
     }
-    const subtitle = selectedChat.isGroup
-      ? `${selectedChat.participants.length} participants`
-      : participantMap.get(selectedChat.participants.find((p) => p !== me) ?? "")?.status ?? "";
+    // Typing wins over presence: it is the more immediate fact, and it is what
+    // the person on the other end is doing right now.
+    const typingHere = [...socket.typists.values()].filter((t) => t.chatId === selectedChat.id);
+    const subtitle = typingHere.length > 0
+      ? (selectedChat.isGroup ? `${typingHere.length} typing…` : "typing…")
+      : selectedChat.isGroup
+        ? `${selectedChat.participants.length} participants`
+        : liveStatus(selectedChat, me, participantMap, socket.presence);
     onHeaderChange({
       ...base,
       title: selectedChat.name,
@@ -418,18 +447,29 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     setPendingImages([]);
     setPendingFiles([]);
     setSendError("");
-    void toUploads(files)
-      .then((uploads) => api.addChatMessage(Number(selectedChatId), body, uploads))
-      .then(
-        () => {
-          reloadMessages();
-          reloadChats();
-        },
-        (err: unknown) => {
-          setSendError(err instanceof Error ? err.message : "Could not send the message.");
-          setDraft(body); // put it back rather than losing it
-        },
-      );
+    // Clearing the draft does not go through onChange, so the retraction has to
+    // be explicit or the other side keeps showing "typing" until the TTL.
+    socket.setTyping(selectedChatId, false);
+
+    // A message with attachments still goes over REST: the socket carries text
+    // frames only, so base64 bytes have no business on it. Everything else goes
+    // over the socket, which is what makes it appear for the others at once.
+    if (files.length > 0) {
+      void toUploads(files)
+        .then((uploads) => api.addChatMessage(Number(selectedChatId), body, uploads))
+        .then(
+          () => {
+            reloadMessages();
+            reloadChats();
+          },
+          (err: unknown) => {
+            setSendError(err instanceof Error ? err.message : "Could not send the message.");
+            setDraft(body);
+          },
+        );
+      return;
+    }
+    socket.sendMessage(selectedChatId, body);
   };
 
   // Bytes come back base64 in JSON rather than from a URL, so the download is
@@ -842,7 +882,10 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
         <InputBase
           placeholder="Type a message"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (selectedChatId) socket.setTyping(selectedChatId, e.target.value.length > 0);
+          }}
           onKeyDown={handleKeyDown}
           multiline
           maxRows={4}

@@ -145,6 +145,8 @@ export interface ApiChat {
   notificationPreference: "all" | "mentions_only" | "none";
   participants: ApiParticipantRef[];
   createdAt: string;
+  /** When the newest message was sent, or empty for a chat with none. */
+  lastMessageAt: string;
 }
 
 export interface ApiDeliveryStatus {
@@ -166,6 +168,11 @@ export interface ApiChatMessage {
   readAt: string | null;
   attachments: ApiAttachmentRef[];
   deliveryStatus: ApiDeliveryStatus | null;
+}
+
+export interface ApiChatSession {
+  clientId: string;
+  expiresAt: string;
 }
 
 export interface ApiPresence {
