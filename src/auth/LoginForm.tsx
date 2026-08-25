@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Box, Button, TextField, Typography, Link } from "@mui/material";
+import { Box, Button, InputAdornment, TextField, Typography, Link } from "@mui/material";
 import { useAuth } from "./AuthContext";
+import { useDomain } from "../DomainContext";
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
@@ -9,17 +10,28 @@ interface LoginFormProps {
 
 export function LoginForm({ onSwitchToRegister, onSwitchToForgot }: LoginFormProps) {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const { domain } = useDomain();
+  const [handle, setHandle] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // One hostname is one Domain, so the domain part is shown rather than typed
+  // (federation design, section 2). An account whose login is an address on
+  // another domain, which every migrated account is, can still be typed in
+  // full; a value containing @ is taken as it stands.
+  const address = handle.includes("@") ? handle : `${handle}@${domain}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setBusy(true);
     try {
-      await login(email, password);
-    } catch {
-      setError("Invalid email or password");
+      await login(address, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -33,12 +45,18 @@ export function LoginForm({ onSwitchToRegister, onSwitchToForgot }: LoginFormPro
 
       <TextField
         label="Email"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        value={handle}
+        onChange={(e) => setHandle(e.target.value)}
         required
         autoFocus
         fullWidth
+        slotProps={{
+          input: {
+            endAdornment: handle.includes("@") ? null : (
+              <InputAdornment position="end">@{domain}</InputAdornment>
+            ),
+          },
+        }}
       />
       <TextField
         label="Password"
@@ -49,8 +67,8 @@ export function LoginForm({ onSwitchToRegister, onSwitchToForgot }: LoginFormPro
         fullWidth
       />
 
-      <Button type="submit" variant="contained" fullWidth disabled={!email || !password}>
-        Sign in
+      <Button type="submit" variant="contained" fullWidth disabled={!handle || !password || busy}>
+        {busy ? "Signing in…" : "Sign in"}
       </Button>
 
       <Box sx={{ display: "flex", justifyContent: "space-between" }}>

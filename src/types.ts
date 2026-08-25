@@ -36,6 +36,15 @@ export interface MailThread {
   subject: string;
   read: boolean;
   messages: MailMessage[];
+  /* Filled in from the thread listing, which knows these without having to
+     fetch the messages. Absent on threads that never came from the API. */
+  participants?: Contact[];
+  updatedAt?: string;
+  messageCount?: number;
+  attachmentCount?: number;
+  /* False until the messages have actually been fetched; until then `messages`
+     holds a single stand-in built from the thread summary. */
+  messagesLoaded?: boolean;
 }
 
 /* ── Chat types ── */

@@ -29,7 +29,9 @@ function attachmentIcon(type: string) {
 }
 import { useState, useEffect } from "react";
 import { loadReplyDraft, saveReplyDraft, clearReplyDraft } from "../drafts";
-import { sampleContacts } from "../data/contacts";
+import { useSession } from "../auth/AuthContext";
+import { useContacts } from "../api/hooks";
+import { toUploads, toBlobUrl } from "../api/adapt";
 
 type PaneMode = "none" | "reply" | "forward";
 
@@ -38,6 +40,7 @@ interface ThreadDetailProps {
   replyRequested: number;
   forwardRequested: number;
   onPaneChange: (open: boolean) => void;
+  onSent: () => void;
 }
 
 function formatFullDate(iso: string): string {
@@ -47,7 +50,11 @@ function formatFullDate(iso: string): string {
   });
 }
 
-export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneChange }: ThreadDetailProps) {
+export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneChange, onSent }: ThreadDetailProps) {
+  const { api } = useSession();
+  const { data: sampleContacts } = useContacts();
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const draft = loadReplyDraft(thread.id);
   const [pane, setPane] = useState<PaneMode>(draft !== null ? "reply" : "none");
   const [replyText, setReplyText] = useState(draft?.text ?? "");
@@ -89,6 +96,56 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
     setForwardTo([]);
   }, [thread.id]);
 
+  // A reply is a new message on the same thread. It reaches every subscriber
+  // through their own projection; nothing is forwarded anywhere (ADR 4).
+  const handleSendReply = async () => {
+    setSending(true);
+    setSendError("");
+    try {
+      await api.addMessage(Number(thread.id), replyText, await toUploads(replyAttachments));
+      clearReplyDraft(thread.id);
+      setReplyText("");
+      setReplyAttachments([]);
+      setPane("none");
+      onSent();
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Could not send the reply.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Adding someone to a thread is a subscription, not a forward: they see the
+  // thread from now on and the history stays where it is.
+  const handleAddSubscribers = async () => {
+    setSending(true);
+    setSendError("");
+    try {
+      for (const contact of forwardTo) {
+        await api.addSubscriber(Number(thread.id), contact.email);
+      }
+      setForwardTo([]);
+      setPane("none");
+      onSent();
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Could not add the recipients.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Attachment bytes come back base64 in JSON rather than from a URL, so the
+  // download is assembled here.
+  const handleOpenAttachment = async (id: string, name: string) => {
+    const file = await api.attachment(Number(id));
+    const url = toBlobUrl(file.fileData, file.mimeType);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDiscardReply = () => {
     setPane("none");
     setReplyText("");
@@ -102,10 +159,16 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
     setForwardTo([]);
   };
 
+  // Everyone already on the thread. Taken from the subscribers the listing
+  // reported when the messages have not been fetched yet.
   const newest = thread.messages[0];
   const replyRecipients = new Map<string, string>();
-  replyRecipients.set(newest.from.email, newest.from.name);
-  newest.to.forEach((c) => replyRecipients.set(c.email, c.name));
+  if (thread.messagesLoaded && newest) {
+    replyRecipients.set(newest.from.email, newest.from.name);
+    newest.to.forEach((c) => replyRecipients.set(c.email, c.name));
+  } else {
+    thread.participants?.forEach((c) => replyRecipients.set(c.email, c.name));
+  }
 
   return (
     <Box sx={{ height: "100%", overflow: "auto", bgcolor: "grey.100" }}>
@@ -118,6 +181,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
         {/* Reply pane */}
         {pane === "reply" && (
           <Paper variant="outlined" sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+            {sendError && <Alert severity="error">{sendError}</Alert>}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Typography variant="body2" color="text.secondary">To:</Typography>
               {[...replyRecipients.entries()].map(([email, name]) => (
@@ -143,8 +207,13 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               <FileAttachments files={replyAttachments} onChange={(files) => { setReplyAttachments(files); if (files.length === 0) setShowAttachments(false); }} />
             )}
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
-              <Button variant="contained" startIcon={<SendIcon />} disabled={replyText.trim().length === 0}>
-                Send
+              <Button
+                variant="contained"
+                startIcon={<SendIcon />}
+                disabled={replyText.trim().length === 0 || sending}
+                onClick={() => void handleSendReply()}
+              >
+                {sending ? "Sending…" : "Send"}
               </Button>
               <Button variant="text" color="inherit" startIcon={<DeleteIcon />} onClick={handleDiscardReply}>
                 Discard
@@ -169,6 +238,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
         {/* Forward pane */}
         {pane === "forward" && (
           <Paper variant="outlined" sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+            {sendError && <Alert severity="error">{sendError}</Alert>}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
               <Typography variant="body2" color="text.secondary">To:</Typography>
               {[...replyRecipients.entries()].map(([email, name]) => (
@@ -229,8 +299,13 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
               )}
             />
             <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
-              <Button variant="contained" startIcon={<SendIcon />} disabled={forwardTo.length === 0}>
-                Forward
+              <Button
+                variant="contained"
+                startIcon={<SendIcon />}
+                disabled={forwardTo.length === 0 || sending}
+                onClick={() => void handleAddSubscribers()}
+              >
+                {sending ? "Adding…" : "Add to thread"}
               </Button>
               <Button variant="text" color="inherit" startIcon={<CloseIcon />} onClick={handleDiscardForward}>
                 Cancel
@@ -269,6 +344,7 @@ export function ThreadDetail({ thread, replyRequested, forwardRequested, onPaneC
                     label={`${att.name} (${att.size})`}
                     variant="outlined"
                     clickable
+                    onClick={() => void handleOpenAttachment(att.id, att.name)}
                     sx={{ borderRadius: 1 }}
                   />
                 ))}

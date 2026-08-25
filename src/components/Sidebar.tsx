@@ -12,16 +12,17 @@ import {
 import InboxIcon from "@mui/icons-material/Inbox";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { accounts } from "../data/accounts";
+import type { MailAccount } from "../types";
 
 interface SidebarProps {
+  accounts: MailAccount[];
   selectedFolder: string | null;
   onSelectFolder: (folderId: string) => void;
   showSettingsAccount?: boolean;
   onAccountClick?: () => void;
 }
 
-export function Sidebar({ selectedFolder, onSelectFolder, showSettingsAccount = false, onAccountClick }: SidebarProps) {
+export function Sidebar({ accounts, selectedFolder, onSelectFolder, showSettingsAccount = false, onAccountClick }: SidebarProps) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Toolbar />

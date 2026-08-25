@@ -11,7 +11,11 @@ export function ForgotPasswordForm({ onSwitchToLogin }: ForgotPasswordFormProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock: always succeed
+    // There is no reset endpoint. The server's only outbound path is
+    // internal/notify, which can send an email_template row and nothing else,
+    // and no template drives a password reset yet (ADR 4, ADR 16). The message
+    // below is deliberately the same whether or not the account exists, which
+    // is what it will have to say once the endpoint lands.
     setSent(true);
   };
 
@@ -23,6 +27,9 @@ export function ForgotPasswordForm({ onSwitchToLogin }: ForgotPasswordFormProps)
         <>
           <Typography variant="body2" color="success.main">
             If an account exists for {email}, a reset link has been sent.
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Password reset is not implemented on the server yet, so no mail goes out.
           </Typography>
           <Link component="button" variant="body2" type="button" onClick={onSwitchToLogin} underline="hover">
             Back to sign in

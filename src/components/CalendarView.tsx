@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Box,
   Divider,
   Drawer,
+  Snackbar,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -15,8 +17,9 @@ import {
   endOfWeek,
   isSameMonth,
 } from "date-fns";
-import { accounts } from "../data/accounts";
-import { appointments, accountColors } from "../data/appointments";
+import { useSession } from "../auth/AuthContext";
+import { useAccounts, useCalendars, useMeetings } from "../api/hooks";
+import type { MailAccount } from "../types";
 import { AccountsPanel } from "./calendar/AccountsPanel";
 import { AgendaView } from "./calendar/AgendaView";
 import { EventEditDialog } from "./calendar/EventEditDialog";
@@ -46,9 +49,30 @@ interface CalendarViewProps {
   onAccountClick?: () => void;
 }
 
+// A calendar is a mailbox (see calendar.ListCalendars), and its colour is the
+// mailbox colour, which the API gives by name.
+const COLORS: Record<string, string> = {
+  red: "#d32f2f",
+  blue: "#1976d2",
+  green: "#2e7d32",
+  orange: "#ed6c02",
+  purple: "#7b1fa2",
+  yellow: "#f9a825",
+  grey: "#607d8b",
+};
+const FALLBACK_COLOR = "#607d8b";
+
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange, onAccountClick }: CalendarViewProps) {
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
+  const { api } = useSession();
+  const { data: mailboxData } = useAccounts();
+  const { data: apiCalendars } = useCalendars();
+  const [saveError, setSaveError] = useState("");
 
   const availableViews = useMemo<CalendarViewKind[]>(() => {
     if (!isMd) return ["day", "3day", "month", "agenda"];
@@ -60,11 +84,44 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     isMd ? "week7" : "3day",
   );
   const [anchor, setAnchor] = useState<Date>(new Date());
-  const [enabledAccounts, setEnabledAccounts] = useState<Set<string>>(
-    () => new Set(accounts.map((a) => a.email)),
+  // The panel toggles calendars by label, so the label has to be unique. It is
+  // the mailbox's sender address, falling back to the calendar's own name.
+  const calendarsByLabel = useMemo(() => {
+    const byId = new Map(mailboxData.mailboxes.map((m) => [m.mailboxId, m]));
+    const seen = new Map<string, { id: number; color: string }>();
+    for (const calendar of apiCalendars) {
+      const mailbox = byId.get(calendar.mailboxId);
+      let label = mailbox?.senderEmail || mailbox?.name || calendar.name;
+      if (seen.has(label)) label = `${label} (${calendar.name})`;
+      seen.set(label, {
+        id: calendar.calendarId,
+        color: COLORS[calendar.color] ?? FALLBACK_COLOR,
+      });
+    }
+    return seen;
+  }, [apiCalendars, mailboxData.mailboxes]);
+
+  const accounts = useMemo<MailAccount[]>(
+    () => [...calendarsByLabel.keys()].map((email) => ({ email, folders: [] })),
+    [calendarsByLabel],
   );
+  const accountColors = useMemo<Record<string, string>>(() => {
+    const colors: Record<string, string> = {};
+    for (const [label, calendar] of calendarsByLabel) colors[label] = calendar.color;
+    return colors;
+  }, [calendarsByLabel]);
+
+  const [enabledAccounts, setEnabledAccounts] = useState<Set<string>>(() => new Set());
+  // Calendars arrive after first render, and a calendar the user has not seen
+  // yet starts enabled. Ones they switched off stay off.
+  const known = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const fresh = [...calendarsByLabel.keys()].filter((label) => !known.current.has(label));
+    if (fresh.length === 0) return;
+    fresh.forEach((label) => known.current.add(label));
+    setEnabledAccounts((prev) => new Set([...prev, ...fresh]));
+  }, [calendarsByLabel]);
   const [editDialog, setEditDialog] = useState<{ start: Date; end: Date; title?: string; location?: string; description?: string; allDay?: boolean; accountEmail?: string; editId?: string } | null>(null);
-  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
 
   // If the view becomes unavailable on breakpoint change, fall back.
   const gridDayCounts: Record<string, number> = { day: 1, "3day": 3, week5: 5, week7: 7 };
@@ -87,25 +144,54 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     }
   }, [availableViews, view]);
 
-  const events = useMemo<CalendarEvent[]>(
-    () => [
-      ...appointments
-        .filter((a) => enabledAccounts.has(a.accountEmail))
-        .map((a) => ({
-          id: a.id,
-          accountEmail: a.accountEmail,
-          title: a.title,
-          start: new Date(a.start),
-          end: new Date(a.end),
-          location: a.location,
-          description: a.description,
-          allDay: a.allDay,
-          color: accountColors[a.accountEmail] ?? "#607d8b",
-        })),
-      ...localEvents,
-    ],
-    [enabledAccounts, localEvents],
+  const enabledCalendarIds = useMemo(
+    () =>
+      [...calendarsByLabel.entries()]
+        .filter(([label]) => enabledAccounts.has(label))
+        .map(([, calendar]) => calendar.id),
+    [calendarsByLabel, enabledAccounts],
   );
+
+  // One request per visible window, widened by a week each side so stepping to
+  // the next view does not blank the grid while it loads. untilDate is
+  // exclusive.
+  const [rangeFrom, rangeUntil] = useMemo(() => {
+    const base =
+      view === "month" ? startOfWeek(startOfMonth(anchor), { weekStartsOn: 1 }) : anchor;
+    const span = view === "month" ? 42 : view === "agenda" ? 14 : 7;
+    return [ymd(addDays(base, -7)), ymd(addDays(base, span + 7))];
+  }, [view, anchor]);
+
+  const { data: meetingsByDate, reload: reloadMeetings } = useMeetings(
+    enabledCalendarIds,
+    rangeFrom,
+    rangeUntil,
+  );
+
+  // The server answers a map of day to meetings, so a meeting spanning days is
+  // repeated under each. Keyed by id to collapse those back into one event.
+  const events = useMemo<CalendarEvent[]>(() => {
+    const labelById = new Map(
+      [...calendarsByLabel.entries()].map(([label, calendar]) => [calendar.id, label]),
+    );
+    const byId = new Map<string, CalendarEvent>();
+    for (const meetings of Object.values(meetingsByDate)) {
+      for (const meeting of meetings) {
+        const label = labelById.get(meeting.calendarId) ?? "";
+        byId.set(String(meeting.meetingId), {
+          id: String(meeting.meetingId),
+          accountEmail: label,
+          title: meeting.title,
+          start: new Date(meeting.startTime),
+          end: new Date(meeting.endTime),
+          description: meeting.description || undefined,
+          allDay: meeting.isAllDay || undefined,
+          color: accountColors[label] ?? FALLBACK_COLOR,
+        });
+      }
+    }
+    return [...byId.values()];
+  }, [meetingsByDate, calendarsByLabel, accountColors]);
 
   const handleCreateEvent = useCallback((start: Date, end: Date) => {
     setEditDialog({ start, end });
@@ -132,39 +218,59 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     });
   }, []);
 
-  const handleSaveEvent = useCallback((data: { title: string; start: Date; end: Date; location: string; description: string; allDay: boolean; accountEmail: string }) => {
-    const editId = editDialog?.editId;
-    if (editId) {
-      setLocalEvents((prev) =>
-        prev.map((ev) =>
-          ev.id === editId
-            ? { ...ev, title: data.title, start: data.start, end: data.end, location: data.location || undefined, description: data.description || undefined, allDay: data.allDay || undefined, accountEmail: data.accountEmail, color: accountColors[data.accountEmail] ?? "#607d8b" }
-            : ev,
-        ),
-      );
-    } else {
-      const newEvent: CalendarEvent = {
-        id: `local-${Date.now()}`,
-        accountEmail: data.accountEmail,
-        title: data.title,
-        start: data.start,
-        end: data.end,
-        location: data.location || undefined,
-        description: data.description || undefined,
-        allDay: data.allDay || undefined,
-        color: accountColors[data.accountEmail] ?? "#607d8b",
-      };
-      setLocalEvents((prev) => [...prev, newEvent]);
-    }
-  }, [editDialog?.editId]);
+  const handleSaveEvent = useCallback(
+    (data: { title: string; start: Date; end: Date; location: string; description: string; allDay: boolean; accountEmail: string }) => {
+      setSaveError("");
+      // PUT /calendar/meeting/{id} only records an RSVP, so an existing meeting
+      // cannot be rewritten from here. Deleting and creating again is what the
+      // API supports, and that is the user's call to make rather than ours.
+      if (editDialog?.editId) {
+        setSaveError("Changing a meeting is not supported by the API yet. Delete it and create a new one.");
+        return;
+      }
+      const calendar = calendarsByLabel.get(data.accountEmail);
+      if (!calendar) {
+        setSaveError("Pick a calendar to put this meeting in.");
+        return;
+      }
+      void api
+        .addMeeting(calendar.id, {
+          title: data.title,
+          startTime: data.start.toISOString(),
+          endTime: data.end.toISOString(),
+          // Stored in UTC with the display zone alongside it (ADR 8).
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+          attendees: [],
+          isAllDay: data.allDay,
+          descriptionHtml: data.description,
+        })
+        .then(
+          () => {
+            setEditDialog(null);
+            reloadMeetings();
+          },
+          (err: unknown) =>
+            setSaveError(err instanceof Error ? err.message : "Could not create the meeting."),
+        );
+    },
+    [api, editDialog?.editId, calendarsByLabel, reloadMeetings],
+  );
 
   const handleDeleteEvent = useCallback(() => {
     const editId = editDialog?.editId;
-    if (editId) {
-      setLocalEvents((prev) => prev.filter((ev) => ev.id !== editId));
+    if (!editId) {
+      setEditDialog(null);
+      return;
     }
-    setEditDialog(null);
-  }, [editDialog?.editId]);
+    void api.deleteMeeting(Number(editId)).then(
+      () => {
+        setEditDialog(null);
+        reloadMeetings();
+      },
+      (err: unknown) =>
+        setSaveError(err instanceof Error ? err.message : "Could not delete the meeting."),
+    );
+  }, [api, editDialog?.editId, reloadMeetings]);
 
   const toggleAccount = (email: string) => {
     setEnabledAccounts((prev) => {
@@ -267,6 +373,17 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
     />
   );
 
+  const errorBar = saveError ? (
+    <Snackbar
+      open
+      autoHideDuration={8000}
+      onClose={() => setSaveError("")}
+      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+    >
+      <Alert severity="error" onClose={() => setSaveError("")}>{saveError}</Alert>
+    </Snackbar>
+  ) : null;
+
   const eventDialog = editDialog && (
     <EventEditDialog
       key={editDialog.editId ?? "new"}
@@ -302,6 +419,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
         </Box>
         <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>{main}</Box>
         {eventDialog}
+        {errorBar}
       </Box>
     );
   }
@@ -326,6 +444,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       </Drawer>
       {main}
       {eventDialog}
+      {errorBar}
     </>
   );
 }

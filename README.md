@@ -20,3 +20,18 @@ Start the development server:
     npm run dev
 
 Enjoy!
+
+## Where the data comes from
+
+The client has no fixtures. It reads `/config.json` at boot to learn which
+domain it is serving and where that domain's API is, then talks to
+webmail-server for everything: `src/api/` holds the client, the wire types and
+the adapters onto the UI types in `src/types.ts`, and `src/api/hooks.ts` is what
+the components call.
+
+`npm run dev` has no backend on its origin to answer `/config.json`, so it falls
+back to a development config. Point it at a running server:
+
+    VITE_API_BASE=http://localhost:8080/api/v1 VITE_DOMAIN=103mail.com npm run dev
+
+For the full two-domain stack, see `../webmail-server/deploy/`.

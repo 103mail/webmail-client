@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   AppBar,
   Box,
@@ -46,9 +46,9 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { sampleThreads } from "./data/messages";
-import { accounts } from "./data/accounts";
 import type { MailThread } from "./types";
+import { useAuth, useSession } from "./auth/AuthContext";
+import { useAccounts, useThreads, useThreadMessages } from "./api/hooks";
 
 const DRAWER_WIDTH = 280;
 const RAIL_WIDTH = 60;
@@ -60,7 +60,7 @@ type Layout = "mobile" | "medium" | "large";
 export function App() {
   const [section, setSection] = useState<Section>("mail");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState<string | null>("john-inbox");
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedThread, setSelectedThread] = useState<MailThread | null>(null);
   const [mailView, setMailView] = useState<MailView>("list");
   const [replyRequested, setReplyRequested] = useState(0);
@@ -76,10 +76,12 @@ export function App() {
   const [calViewAnchor, setCalViewAnchor] = useState<null | HTMLElement>(null);
   const [chatListMenuAnchor, setChatListMenuAnchor] = useState<null | HTMLElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const { user, api } = useSession();
+  const { logout } = useAuth();
   const [profile, setProfile] = useState<AccountProfile>({
-    fullName: "",
-    notificationEmail: accounts[0]?.email ?? "",
-    verifiedNotificationEmail: accounts[0]?.email ?? "",
+    fullName: user.name,
+    notificationEmail: user.email,
+    verifiedNotificationEmail: user.email,
     notificationFrequency: "daily",
     avatarDataUrl: undefined,
   });
@@ -94,14 +96,34 @@ export function App() {
   const layout: Layout = isXl ? "large" : isMd ? "medium" : "mobile";
   const multiPane = layout !== "mobile";
   const selectionMode = checkedIds.size > 0;
+
+  // Mailboxes and their folders, then the threads in the selected folder, then
+  // that thread's messages. Three levels, three requests: the API has no call
+  // that returns a folder's threads with their bodies.
+  const { data: mailboxes, reload: reloadMailboxes } = useAccounts();
+  const accounts = mailboxes.accounts;
+  const { data: folderThreads, loading: threadsLoading, error: threadsError, reload: reloadThreads } =
+    useThreads(selectedFolder, activeFilter);
+  const { thread: openThread } = useThreadMessages(selectedThread);
+
+  // The first folder to show is whichever the server calls default; there is no
+  // folder to select until the mailboxes have been read.
+  useEffect(() => {
+    if (selectedFolder === null && mailboxes.defaultFolderId !== null) {
+      setSelectedFolder(mailboxes.defaultFolderId);
+    }
+  }, [selectedFolder, mailboxes.defaultFolderId]);
+
   const currentAccount = accounts.find((a) => a.folders.some((f) => f.id === selectedFolder));
   const currentFolder = currentAccount?.folders.find((f) => f.id === selectedFolder);
   const canMove = (currentAccount?.folders.length ?? 0) > 1;
 
-  const folderThreads = useMemo(
-    () => sampleThreads.filter((t) => t.folderId === selectedFolder),
-    [selectedFolder]
-  );
+  // Unread counts live on the folder, so anything that changes read state or
+  // moves a thread has to refresh both lists.
+  const refresh = useCallback(() => {
+    reloadThreads();
+    reloadMailboxes();
+  }, [reloadThreads, reloadMailboxes]);
 
   // Auto-select first thread in multi-pane mode (only when no active filter)
   useEffect(() => {
@@ -118,21 +140,12 @@ export function App() {
   const handleSelectFolder = (folderId: string) => {
     setSelectedFolder(folderId);
     setCheckedIds(new Set());
-    if (multiPane) {
-      const threads = sampleThreads.filter((t) => t.folderId === folderId);
-      if (threads.length > 0) {
-        setSelectedThread(threads[0]);
-        setMailView("thread");
-      } else {
-        setSelectedThread(null);
-        setMailView("list");
-      }
-    } else {
-      setSelectedThread(null);
-      setMailView("list");
-    }
-    if (layout === "mobile") setMobileOpen(false);
-    if (layout === "medium") setMobileOpen(false);
+    // The threads of the new folder are still loading, so nothing can be
+    // selected yet. The auto-select effect below picks the first one once they
+    // arrive, which is the same thing it does on first render.
+    setSelectedThread(null);
+    setMailView("list");
+    if (layout !== "large") setMobileOpen(false);
   };
 
   const handleSelectThread = (thread: MailThread) => {
@@ -184,6 +197,29 @@ export function App() {
 
   const handleClearSelection = () => setCheckedIds(new Set());
 
+  // Deleting removes this user's projection of the thread. The canonical
+  // g_thread and its messages are append-only and stay (ADR 5).
+  const handleDeleteThreads = useCallback(async (ids: string[]) => {
+    await Promise.all(ids.map((id) => api.deleteThread(Number(id))));
+    if (selectedThread && ids.includes(selectedThread.id)) {
+      setSelectedThread(null);
+      setMailView("list");
+    }
+    setCheckedIds(new Set());
+    refresh();
+  }, [api, selectedThread, refresh]);
+
+  const handleMoveThreads = useCallback(async (ids: string[], folderId: string) => {
+    await Promise.all(ids.map((id) => api.moveThread(Number(id), Number(folderId))));
+    if (selectedThread && ids.includes(selectedThread.id)) {
+      setSelectedThread(null);
+      setMailView("list");
+    }
+    setCheckedIds(new Set());
+    setMoveAnchor(null);
+    refresh();
+  }, [api, selectedThread, refresh]);
+
   const handleSectionChange = (s: Section) => {
     setSection(s);
     setCheckedIds(new Set());
@@ -211,6 +247,7 @@ export function App() {
 
   const sidebarDesktop = (
     <Sidebar
+      accounts={accounts}
       selectedFolder={selectedFolder}
       onSelectFolder={handleSelectFolder}
     />
@@ -218,6 +255,7 @@ export function App() {
 
   const sidebarMobile = (
     <Sidebar
+      accounts={accounts}
       selectedFolder={selectedFolder}
       onSelectFolder={handleSelectFolder}
       showSettingsAccount
@@ -252,6 +290,8 @@ export function App() {
   const mailList = (
     <MailList
       threads={folderThreads}
+      loading={threadsLoading}
+      error={threadsError}
       onSelect={handleSelectThread}
       selectedId={selectedThread?.id ?? null}
       searchQuery={activeFilter}
@@ -267,6 +307,10 @@ export function App() {
       {mailView === "compose" && selectedFolder && (
         <ComposeScreen
           folderId={selectedFolder}
+          onSent={() => {
+            setMailView("list");
+            refresh();
+          }}
           onDiscard={() => {
             if (multiPane && selectedThread) {
               setMailView("thread");
@@ -276,8 +320,19 @@ export function App() {
           }}
         />
       )}
-      {mailView === "thread" && selectedThread && (
-        <ThreadDetail thread={selectedThread} replyRequested={replyRequested} forwardRequested={forwardRequested} onPaneChange={setHasPaneOpen} />
+      {mailView === "thread" && openThread && (
+        <ThreadDetail
+          thread={openThread}
+          replyRequested={replyRequested}
+          forwardRequested={forwardRequested}
+          onPaneChange={setHasPaneOpen}
+          onSent={() => {
+            // A reply is a new message on the same thread, so the thread has to
+            // be re-read rather than patched in place.
+            setSelectedThread(null);
+            refresh();
+          }}
+        />
       )}
       {multiPane && !selectedThread && mailView !== "compose" && (
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "text.secondary" }}>
@@ -320,7 +375,11 @@ export function App() {
                 </Tooltip>
               )}
               <Tooltip title="Delete">
-                <IconButton color="inherit" aria-label="delete threads">
+                <IconButton
+                  color="inherit"
+                  aria-label="delete threads"
+                  onClick={() => void handleDeleteThreads([...checkedIds])}
+                >
                   <DeleteIcon />
                 </IconButton>
               </Tooltip>
@@ -523,7 +582,11 @@ export function App() {
                     </Tooltip>
                   )}
                   <Tooltip title="Delete thread">
-                    <IconButton color="inherit" aria-label="delete thread">
+                    <IconButton
+                      color="inherit"
+                      aria-label="delete thread"
+                      onClick={() => selectedThread && void handleDeleteThreads([selectedThread.id])}
+                    >
                       <DeleteIcon />
                     </IconButton>
                   </Tooltip>
@@ -543,7 +606,13 @@ export function App() {
               <MenuItem
                 key={f.id}
                 onClick={() => {
-                  setMoveAnchor(null);
+                  const ids = selectionMode
+                    ? [...checkedIds]
+                    : selectedThread
+                      ? [selectedThread.id]
+                      : [];
+                  if (ids.length > 0) void handleMoveThreads(ids, f.id);
+                  else setMoveAnchor(null);
                 }}
               >
                 {f.name}
@@ -716,8 +785,10 @@ export function App() {
       <AccountScreen
         open={accountOpen}
         profile={profile}
+        accountEmail={user.email}
         onClose={() => setAccountOpen(false)}
         onSave={setProfile}
+        onSignOut={logout}
       />
     </Box>
   );

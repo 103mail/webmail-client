@@ -25,8 +25,8 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     }
     try {
       await register(name, email, password);
-    } catch {
-      setError("Registration failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Registration failed");
     }
   };
 

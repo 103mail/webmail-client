@@ -3,10 +3,12 @@ import { Box, Card, CardContent, Link, Typography } from "@mui/material";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
+import { useDomain } from "../DomainContext";
 
 type AuthScreen = "login" | "register" | "forgot";
 
 export function AuthFlow() {
+  const { brand } = useDomain();
   const [screen, setScreen] = useState<AuthScreen>("login");
 
   return (
@@ -22,7 +24,7 @@ export function AuthFlow() {
       }}
     >
       <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-        <Box component="img" src="/103mail.svg" alt="103mail" sx={{ height: 64 }} />
+        <Box component="img" src={brand.logo} alt={brand.name} sx={{ height: 64 }} />
       </Box>
       <Card sx={{ width: "100%", maxWidth: 400 }}>
         <CardContent sx={{ p: 4 }}>
@@ -42,8 +44,8 @@ export function AuthFlow() {
       </Card>
       <Typography variant="body2" align="center" sx={{ mt: 3, color: "rgba(0,0,0,0.25)" }}>
         Powered by:{" "}
-        <Link href="https://103mail.com" target="_blank" rel="noopener" underline="hover" color="inherit">
-          103mail.com
+        <Link href={brand.marketingUrl} target="_blank" rel="noopener" underline="hover" color="inherit">
+          {brand.name}
         </Link>
       </Typography>
     </Box>

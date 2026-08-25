@@ -17,6 +17,8 @@ import type { MailThread } from "../types";
 
 interface MailListProps {
   threads: MailThread[];
+  loading?: boolean;
+  error?: Error | null;
   onSelect: (thread: MailThread) => void;
   selectedId: string | null;
   searchQuery?: string;
@@ -37,10 +39,11 @@ function formatDate(iso: string): string {
 
 const LONG_PRESS_MS = 500;
 
-export function MailList({ threads, onSelect, selectedId, searchQuery = "", onClearSearch, checkedIds, onToggleChecked, onFilteredChange }: MailListProps) {
+export function MailList({ threads, loading = false, error = null, onSelect, selectedId, searchQuery = "", onClearSearch, checkedIds, onToggleChecked, onFilteredChange }: MailListProps) {
   const q = searchQuery.toLowerCase();
-  const filtered = threads
-    .filter((t) => !q || t.subject.toLowerCase().includes(q));
+  // The server has already applied the search, across subject, body and sender.
+  // Filtering again here would drop the rows whose match was in the body.
+  const filtered = threads;
 
   const filteredCount = filtered.length;
   const firstFilteredId = filtered[0]?.id ?? null;
@@ -92,19 +95,26 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
         Showing results for &lsquo;{searchQuery}&rsquo;
       </Alert>
     )}
-    {filtered.length === 0 ? (
+    {error ? (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">Could not load this folder: {error.message}</Alert>
+      </Box>
+    ) : filtered.length === 0 ? (
       <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography color="text.secondary">No messages</Typography>
+        <Typography color="text.secondary">{loading ? "Loading…" : "No messages"}</Typography>
       </Box>
     ) : (
     <List disablePadding>
       {filtered.map((thread) => {
-        const newest = thread.messages[0];
-        const participants = [
-          ...new Map(
-            thread.messages.map((m) => [m.from.email, m.from.name])
-          ).values(),
-        ];
+        // The thread listing already knows who is on the thread, when it last
+        // moved and how many messages it holds, so the list does not have to
+        // fetch the messages to render a row. It falls back to the messages for
+        // threads that did not come from the API.
+        const participants =
+          thread.participants?.map((c) => c.name) ??
+          [...new Map(thread.messages.map((m) => [m.from.email, m.from.name])).values()];
+        const when = thread.updatedAt ?? thread.messages[0]?.date;
+        const count = thread.messageCount ?? thread.messages.length;
         const weight = thread.read ? 400 : 700;
         const checked = checkedIds.has(thread.id);
 
@@ -135,9 +145,9 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
                       <Typography variant="body2" noWrap sx={{ fontWeight: weight }}>
                         {participants.join(", ")}
                       </Typography>
-                      {thread.messages.length > 1 && (
+                      {count > 1 && (
                         <Chip
-                          label={thread.messages.length}
+                          label={count}
                           size="small"
                           variant="outlined"
                           sx={{ height: 20, fontSize: 12 }}
@@ -145,7 +155,7 @@ export function MailList({ threads, onSelect, selectedId, searchQuery = "", onCl
                       )}
                     </Box>
                     <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
-                      {formatDate(newest.date)}
+                      {when ? formatDate(when) : ""}
                     </Typography>
                   </Box>
                 }

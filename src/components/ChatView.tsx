@@ -37,8 +37,9 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import DownloadIcon from "@mui/icons-material/Download";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import type { Chat, ChatAttachment, ChatImage, ChatMessage } from "../types";
-import { sampleChats, participantMap } from "../data/chats";
-import { accounts } from "../data/accounts";
+import { useSession } from "../auth/AuthContext";
+import { useChats, useChatMessages } from "../api/hooks";
+import { toUploads, toBlobUrl } from "../api/adapt";
 
 export interface ChatHeaderState {
   /** Title/subtitle to surface in the AppBar when the conversation is the only visible pane. */
@@ -188,7 +189,13 @@ function ImageGrid({ images, onOpen }: { images: ChatImage[]; onOpen: (url: stri
   );
 }
 
-function AttachmentList({ attachments }: { attachments: ChatAttachment[] }) {
+function AttachmentList({
+  attachments,
+  onDownload,
+}: {
+  attachments: ChatAttachment[];
+  onDownload: (id: string, name: string) => void;
+}) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, mt: 0.5 }}>
       {attachments.map((att) => (
@@ -212,7 +219,9 @@ function AttachmentList({ attachments }: { attachments: ChatAttachment[] }) {
             <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>{att.name}</Typography>
             <Typography variant="caption" color="text.secondary">{att.size}</Typography>
           </Box>
-          <IconButton size="small"><DownloadIcon fontSize="small" /></IconButton>
+          <IconButton size="small" onClick={() => onDownload(att.id, att.name)}>
+            <DownloadIcon fontSize="small" />
+          </IconButton>
         </Box>
       ))}
     </Box>
@@ -232,8 +241,12 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
   const isXl = useMediaQuery(theme.breakpoints.up("xl"));
+  const { user, api } = useSession();
 
-  const [chats, setChats] = useState<Chat[]>(sampleChats);
+  // Chat participants are addressed by email, so the signed-in address is what
+  // marks a message as this user's own. The fixtures used the literal "me".
+  const me = user.email;
+
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [filterUnread, setFilterUnread] = useState(false);
@@ -242,6 +255,8 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const [emojiAnchor, setEmojiAnchor] = useState<HTMLElement | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [pendingImages, setPendingImages] = useState<ChatImage[]>([]);
+  // The chips above are for display; these are the bytes that get uploaded.
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -256,6 +271,25 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
 
   const multiPane = isMd;
   const threePane = isXl;
+
+  // The chat list and the open conversation are two calls. Both poll, because
+  // the WebSocket bridge ADR 13 describes is not implemented in the API server.
+  const { data: chatData, reload: reloadChats } = useChats(activeFilter);
+  const chatList = chatData.chats;
+  const { data: openMessages, reload: reloadMessages } = useChatMessages(selectedChatId);
+  const [sendError, setSendError] = useState("");
+
+  // The open chat carries its messages; the rest carry none, which is all the
+  // list needs beyond what the chat row itself reports.
+  const chats = useMemo<Chat[]>(
+    () =>
+      chatList.map((chat) =>
+        chat.id === selectedChatId ? { ...chat, messages: openMessages } : chat,
+      ),
+    [chatList, selectedChatId, openMessages],
+  );
+
+  const participantMap = chatData.participants;
 
   /* filtered + sorted chat list */
   const visibleChats = useMemo(() => {
@@ -292,17 +326,12 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedChat?.messages.length, selectedChatId]);
 
-  /* mark messages read when opening */
+  /* Opening a chat is what clears its unread count. The server does that when
+     the messages are read, so the list is simply re-read. */
   useEffect(() => {
     if (!selectedChat || selectedChat.unreadCount === 0) return;
-    setChats((prev) =>
-      prev.map((c) =>
-        c.id === selectedChat.id
-          ? { ...c, unreadCount: 0, messages: c.messages.map((m) => ({ ...m, status: "read" as const })) }
-          : c,
-      ),
-    );
-  }, [selectedChatId]);
+    reloadChats();
+  }, [selectedChatId, selectedChat, reloadChats]);
 
   const handleSelectChat = useCallback((chatId: string) => {
     const chat = chats.find((c) => c.id === chatId);
@@ -342,7 +371,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     }
     const subtitle = selectedChat.isGroup
       ? `${selectedChat.participants.length} participants`
-      : participantMap.get(selectedChat.participants.find((p) => p !== "me") ?? "")?.status ?? "";
+      : participantMap.get(selectedChat.participants.find((p) => p !== me) ?? "")?.status ?? "";
     onHeaderChange({
       ...base,
       title: selectedChat.name,
@@ -379,49 +408,72 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
 
   const handleSend = () => {
     if (!selectedChatId) return;
-    const hasContent = draft.trim() || pendingAttachments.length > 0 || pendingImages.length > 0;
-    if (!hasContent) return;
-    const now = new Date().toISOString();
-    const newMsg: ChatMessage = {
-      id: `msg-new-${Date.now()}`,
-      chatId: selectedChatId,
-      fromId: "me",
-      body: draft.trim(),
-      timestamp: now,
-      status: "sent",
-      ...(pendingAttachments.length > 0 ? { attachments: pendingAttachments } : {}),
-      ...(pendingImages.length > 0 ? { images: pendingImages } : {}),
-    };
-    setChats((prev) =>
-      prev.map((c) =>
-        c.id === selectedChatId
-          ? { ...c, messages: [...c.messages, newMsg], lastActivity: now }
-          : c,
-      ),
-    );
+    const body = draft.trim();
+    // The API takes a body and attachments; it has no notion of a message that
+    // is only files, and rejects an empty body.
+    if (!body) return;
+    const files = pendingFiles;
     setDraft("");
     setPendingAttachments([]);
     setPendingImages([]);
+    setPendingFiles([]);
+    setSendError("");
+    void toUploads(files)
+      .then((uploads) => api.addChatMessage(Number(selectedChatId), body, uploads))
+      .then(
+        () => {
+          reloadMessages();
+          reloadChats();
+        },
+        (err: unknown) => {
+          setSendError(err instanceof Error ? err.message : "Could not send the message.");
+          setDraft(body); // put it back rather than losing it
+        },
+      );
   };
+
+  // Bytes come back base64 in JSON rather than from a URL, so the download is
+  // assembled here.
+  const handleDownloadAttachment = useCallback(
+    (id: string, name: string) => {
+      void api.chatAttachment(Number(id)).then(
+        (file) => {
+          const url = toBlobUrl(file.fileData, file.mimeType);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = name;
+          link.click();
+          URL.revokeObjectURL(url);
+        },
+        (err: unknown) =>
+          setSendError(err instanceof Error ? err.message : "Could not download the file."),
+      );
+    },
+    [api],
+  );
 
   const handleAttachFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const next: ChatAttachment[] = Array.from(files).map((f) => ({
+    const picked = Array.from(files);
+    const next: ChatAttachment[] = picked.map((f) => ({
       id: `att-new-${Date.now()}-${f.name}`,
       name: f.name,
       size: formatBytes(f.size),
       type: f.type || "application/octet-stream",
     }));
     setPendingAttachments((prev) => [...prev, ...next]);
+    setPendingFiles((prev) => [...prev, ...picked]);
   };
 
   const handleAttachImages = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const next: ChatImage[] = Array.from(files).map((f) => ({
+    const picked = Array.from(files);
+    const next: ChatImage[] = picked.map((f) => ({
       id: `img-new-${Date.now()}-${f.name}`,
       url: URL.createObjectURL(f),
     }));
     setPendingImages((prev) => [...prev, ...next]);
+    setPendingFiles((prev) => [...prev, ...picked]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -443,7 +495,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   /* Group chats by account, preserving the sort order within each group */
   const chatsByAccount = useMemo(() => {
     const map = new Map<string, Chat[]>();
-    for (const acc of accounts) map.set(acc.email, []);
     for (const chat of visibleChats) {
       if (!map.has(chat.accountEmail)) map.set(chat.accountEmail, []);
       map.get(chat.accountEmail)!.push(chat);
@@ -525,7 +576,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
               </ListItemButton>
               {!collapsed && list.map((chat) => {
                 const lastMsg = chat.messages[chat.messages.length - 1];
-                const senderName = lastMsg?.fromId === "me" ? "You" : (participantMap.get(lastMsg?.fromId)?.name.split(" ")[0] ?? "");
+                const senderName = lastMsg?.fromId === me ? "You" : (participantMap.get(lastMsg?.fromId)?.name.split(" ")[0] ?? "");
                 const selected = chat.id === selectedChatId;
                 return (
                   <ListItemButton
@@ -541,7 +592,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                   >
                     <ListItemAvatar>
                       {(() => {
-                        const otherParticipant = !chat.isGroup ? participantMap.get(chat.participants.find((p) => p !== "me") ?? "") : undefined;
+                        const otherParticipant = !chat.isGroup ? participantMap.get(chat.participants.find((p) => p !== me) ?? "") : undefined;
                         const isOnline = otherParticipant?.status === "online";
                         return isOnline ? (
                           <Badge
@@ -592,7 +643,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                                 || (lastMsg.attachments?.length ? `📎 ${lastMsg.attachments[0].name}` : "");
                               return (
                                 <>
-                                  {lastMsg.fromId === "me" && <StatusIcon status={lastMsg.status} />}
+                                  {lastMsg.fromId === me && <StatusIcon status={lastMsg.status} />}
                                   {" "}
                                   {chat.isGroup && `${senderName}: `}
                                   {preview}
@@ -622,6 +673,11 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   /* ── Conversation pane ── */
   const conversationPane = selectedChat ? (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "grey.100" }}>
+      {sendError && (
+        <Alert severity="error" onClose={() => setSendError("")} sx={{ borderRadius: 0 }}>
+          {sendError}
+        </Alert>
+      )}
 
       {/* Messages */}
       <Box sx={{ flexGrow: 1, overflow: "auto", px: { xs: 1, sm: 1.5 }, py: 1 }}>
@@ -629,7 +685,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           const snap = unreadSnapshot.current[selectedChat.id] ?? 0;
           const unreadStart = snap > 0 ? selectedChat.messages.length - snap : -1;
           return selectedChat.messages.map((msg, i) => {
-          const isOwn = msg.fromId === "me";
+          const isOwn = msg.fromId === me;
           const sender = participantMap.get(msg.fromId);
           const showSender = selectedChat.isGroup && !isOwn;
           const showDate = shouldShowDateSeparator(selectedChat.messages[i - 1], msg);
@@ -691,7 +747,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                     <ImageGrid images={msg.images} onOpen={setLightbox} />
                   )}
                   {msg.attachments && msg.attachments.length > 0 && (
-                    <AttachmentList attachments={msg.attachments} />
+                    <AttachmentList attachments={msg.attachments} onDownload={handleDownloadAttachment} />
                   )}
                   <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 0.3, mt: 0.3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
@@ -857,7 +913,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           </Typography>
         )}
         {!selectedChat.isGroup && (() => {
-          const other = participantMap.get(selectedChat.participants.find((p) => p !== "me") ?? "");
+          const other = participantMap.get(selectedChat.participants.find((p) => p !== me) ?? "");
           return other ? (
             <>
               <Typography variant="body2" color="text.secondary">{other.email}</Typography>
@@ -892,10 +948,10 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
-                    primary={p.id === "me" ? "You" : p.name}
+                    primary={p.id === me ? "You" : p.name}
                     secondary={p.status}
                     slotProps={{
-                      primary: { variant: "body2", sx: { fontWeight: p.id === "me" ? 600 : 400 } },
+                      primary: { variant: "body2", sx: { fontWeight: p.id === me ? 600 : 400 } },
                       secondary: { variant: "caption" },
                     }}
                   />

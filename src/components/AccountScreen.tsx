@@ -40,8 +40,12 @@ export interface AccountProfile {
 interface AccountScreenProps {
   open: boolean;
   profile: AccountProfile;
+  /* The signed-in address, from GET /auth/token. Not editable here: an address
+     is an alias on a mailbox, which the API changes elsewhere. */
+  accountEmail: string;
   onClose: () => void;
   onSave: (next: AccountProfile) => void;
+  onSignOut: () => void;
 }
 
 const FREQUENCIES: { value: NotificationFrequency; label: string }[] = [
@@ -51,7 +55,7 @@ const FREQUENCIES: { value: NotificationFrequency; label: string }[] = [
   { value: "none", label: "None" },
 ];
 
-export function AccountScreen({ open, profile, onClose, onSave }: AccountScreenProps) {
+export function AccountScreen({ open, profile, accountEmail, onClose, onSave, onSignOut }: AccountScreenProps) {
   const theme = useTheme();
   const fullScreen = !useMediaQuery(theme.breakpoints.up("md"));
 
@@ -130,6 +134,7 @@ export function AccountScreen({ open, profile, onClose, onSave }: AccountScreenP
               <ArrowBackIcon />
             </IconButton>
             <Typography variant="h6" sx={{ flexGrow: 1 }}>Account</Typography>
+            <Button color="inherit" onClick={onSignOut}>Sign out</Button>
             <Button color="inherit" onClick={handleSave} disabled={!canSave}>Save</Button>
           </Toolbar>
         </AppBar>
@@ -237,6 +242,11 @@ export function AccountScreen({ open, profile, onClose, onSave }: AccountScreenP
             </Alert>
           )}
 
+          <Alert severity="warning">
+            Signed in as {accountEmail}. These preferences are not stored on the server yet:
+            the API has no route onto notification_preference, so they are lost on reload.
+          </Alert>
+
           <Box>
             <Typography variant="body2" sx={{ mb: 1, color: "text.secondary" }}>
               Notification frequency
@@ -261,6 +271,8 @@ export function AccountScreen({ open, profile, onClose, onSave }: AccountScreenP
       </DialogContent>
       {!fullScreen && (
         <DialogActions sx={{ px: 3, mt: -.5, mb: 1.5 }}>
+          <Button color="inherit" onClick={onSignOut}>Sign out</Button>
+          <Box sx={{ flexGrow: 1 }} />
           <Button variant="contained" onClick={handleSave} disabled={!canSave}>Save</Button>
         </DialogActions>
       )}

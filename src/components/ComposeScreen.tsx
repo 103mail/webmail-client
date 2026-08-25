@@ -13,16 +13,23 @@ import SendIcon from "@mui/icons-material/Send";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import { FileAttachments } from "./FileAttachments";
-import { sampleContacts } from "../data/contacts";
+import { useSession } from "../auth/AuthContext";
+import { useContacts } from "../api/hooks";
+import { toUploads } from "../api/adapt";
 import type { Contact } from "../types";
 import { loadComposeDraft, saveComposeDraft, clearComposeDraft } from "../drafts";
 
 interface ComposeScreenProps {
   folderId: string;
   onDiscard: () => void;
+  onSent: () => void;
 }
 
-export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
+export function ComposeScreen({ folderId, onDiscard, onSent }: ComposeScreenProps) {
+  const { api } = useSession();
+  const { data: sampleContacts } = useContacts();
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const draft = loadComposeDraft(folderId);
   const [to, setTo] = useState<Contact[]>(draft?.to ?? []);
   const [subject, setSubject] = useState(draft?.subject ?? "");
@@ -50,18 +57,35 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
     setShowAttachments(false);
   }, [folderId]);
 
-  const handleSend = () => {
+  // POST /email/thread/{folderId} writes the canonical thread once and fans it
+  // out to each subscriber's own projection. A recipient without an account is
+  // onboarded by the server with a content-free invite (ADR 6); nothing here
+  // has to know which recipients those are.
+  const handleSend = async () => {
     if (to.length === 0) return;
-    console.log("Sending mail:", {
-      to: to.map((c) => c.email),
-      subject,
-      body,
-    });
-    alert(`Mail sent to ${to.map((c) => c.name).join(", ")}!`);
-    clearComposeDraft(folderId);
-    setTo([]);
-    setSubject("");
-    setBody("");
+    setSending(true);
+    setError("");
+    try {
+      const threadId = await api.addThread(
+        Number(folderId),
+        subject,
+        to.map((c) => c.email),
+        body,
+        await toUploads(attachments)
+      );
+      if (threadId === null) throw new Error("The server refused the message.");
+      discardedRef.current = true; // the draft is sent, do not save it on unmount
+      clearComposeDraft(folderId);
+      setTo([]);
+      setSubject("");
+      setBody("");
+      setAttachments([]);
+      onSent();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the message.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleDiscard = () => {
@@ -74,6 +98,7 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
     <Box sx={{ height: "100%", overflow: "auto", bgcolor: "grey.100" }}>
     <Box sx={{ px: { xs: 1, sm: 1.5 }, pt: 1.5, pb: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
       <Paper variant="outlined" sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+        {error && <Alert severity="error">{error}</Alert>}
         <Autocomplete
           multiple
           freeSolo
@@ -158,10 +183,10 @@ export function ComposeScreen({ folderId, onDiscard }: ComposeScreenProps) {
           <Button
             variant="contained"
             startIcon={<SendIcon />}
-            onClick={handleSend}
-            disabled={to.length === 0}
+            onClick={() => void handleSend()}
+            disabled={to.length === 0 || sending}
           >
-            Send
+            {sending ? "Sending…" : "Send"}
           </Button>
           <Button
             variant="text"
