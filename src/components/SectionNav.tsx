@@ -25,9 +25,10 @@ interface SectionNavProps {
   onChange: (section: Section) => void;
   isDesktop: boolean;
   onAccountClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
-export function SectionNav({ section, onChange, isDesktop, onAccountClick }: SectionNavProps) {
+export function SectionNav({ section, onChange, isDesktop, onAccountClick, onSettingsClick }: SectionNavProps) {
   if (isDesktop) {
     return (
       <>
@@ -70,7 +71,7 @@ export function SectionNav({ section, onChange, isDesktop, onAccountClick }: Sec
         <Box sx={{ flexGrow: 1 }} />
 
         <Tooltip title="Settings" placement="right">
-          <IconButton size="large" aria-label="settings">
+          <IconButton size="large" aria-label="settings" onClick={onSettingsClick}>
             <SettingsIcon />
           </IconButton>
         </Tooltip>

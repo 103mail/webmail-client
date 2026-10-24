@@ -27,6 +27,7 @@ import { MonthView } from "./calendar/MonthView";
 import { TimeGridView } from "./calendar/TimeGridView";
 import type { CalendarEvent, CalendarViewKind } from "./calendar/types";
 import { rangeForView } from "./calendar/utils";
+import { MAILBOX_COLORS, FALLBACK_COLOR } from "../mailboxColors";
 
 const ACCOUNTS_PANEL_WIDTH = 240;
 const RAIL_WIDTH = 60;
@@ -47,31 +48,32 @@ interface CalendarViewProps {
   layout: "mobile" | "medium" | "large";
   onHeaderChange?: (state: CalendarHeaderState) => void;
   onAccountClick?: () => void;
+  onSettingsClick?: () => void;
+  /* Bumped when settings changed a mailbox, whose name and colour the
+     calendars carry, so they are read again. */
+  mailboxesVersion?: number;
 }
 
 // A calendar is a mailbox (see calendar.ListCalendars), and its colour is the
 // mailbox colour, which the API gives by name.
-const COLORS: Record<string, string> = {
-  red: "#d32f2f",
-  blue: "#1976d2",
-  green: "#2e7d32",
-  orange: "#ed6c02",
-  purple: "#7b1fa2",
-  yellow: "#f9a825",
-  grey: "#607d8b",
-};
-const FALLBACK_COLOR = "#607d8b";
 
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange, onAccountClick }: CalendarViewProps) {
+export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange, onAccountClick, onSettingsClick, mailboxesVersion = 0 }: CalendarViewProps) {
   const theme = useTheme();
   const isMd = useMediaQuery(theme.breakpoints.up("md"));
   const { api } = useSession();
-  const { data: mailboxData } = useAccounts();
-  const { data: apiCalendars } = useCalendars();
+  const { data: mailboxData, reload: reloadMailboxes } = useAccounts();
+  const { data: apiCalendars, reload: reloadCalendars } = useCalendars();
+  const seenMailboxesVersion = useRef(mailboxesVersion);
+  useEffect(() => {
+    if (seenMailboxesVersion.current === mailboxesVersion) return;
+    seenMailboxesVersion.current = mailboxesVersion;
+    reloadMailboxes();
+    reloadCalendars();
+  }, [mailboxesVersion, reloadMailboxes, reloadCalendars]);
   const [saveError, setSaveError] = useState("");
 
   const availableViews = useMemo<CalendarViewKind[]>(() => {
@@ -95,7 +97,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       if (seen.has(label)) label = `${label} (${calendar.name})`;
       seen.set(label, {
         id: calendar.calendarId,
-        color: COLORS[calendar.color] ?? FALLBACK_COLOR,
+        color: MAILBOX_COLORS[calendar.color] ?? FALLBACK_COLOR,
       });
     }
     return seen;
@@ -370,6 +372,7 @@ export function CalendarView({ drawerOpen, onDrawerClose, layout, onHeaderChange
       onToggle={toggleAccount}
       showSettingsAccount={layout === "mobile"}
       onAccountClick={onAccountClick}
+      onSettingsClick={onSettingsClick}
     />
   );
 

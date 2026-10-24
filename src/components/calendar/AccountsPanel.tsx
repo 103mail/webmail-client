@@ -19,9 +19,10 @@ interface AccountsPanelProps {
   onToggle: (email: string) => void;
   showSettingsAccount?: boolean;
   onAccountClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
-export function AccountsPanel({ accounts, colors, enabled, onToggle, showSettingsAccount = false, onAccountClick }: AccountsPanelProps) {
+export function AccountsPanel({ accounts, colors, enabled, onToggle, showSettingsAccount = false, onAccountClick, onSettingsClick }: AccountsPanelProps) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1, flexGrow: 1, overflow: "auto" }}>
@@ -75,7 +76,7 @@ export function AccountsPanel({ accounts, colors, enabled, onToggle, showSetting
       {showSettingsAccount && (
         <List disablePadding>
           <ListItem disablePadding>
-            <ListItemButton>
+            <ListItemButton onClick={onSettingsClick}>
               <ListItemIcon>
                 <SettingsIcon />
               </ListItemIcon>

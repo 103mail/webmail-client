@@ -36,6 +36,7 @@ import { ChatView } from "./components/ChatView";
 import type { ChatHeaderState } from "./components/ChatView";
 import { AccountScreen } from "./components/AccountScreen";
 import type { AccountProfile } from "./components/AccountScreen";
+import { SettingsScreen } from "./components/SettingsScreen";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TodayIcon from "@mui/icons-material/Today";
@@ -85,6 +86,12 @@ export function App() {
   });
   const handleOpenAccount = useCallback(() => {
     setAccountOpen(true);
+    setMobileOpen(false);
+  }, []);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mailboxesVersion, setMailboxesVersion] = useState(0);
+  const handleOpenSettings = useCallback(() => {
+    setSettingsOpen(true);
     setMobileOpen(false);
   }, []);
   const theme = useTheme();
@@ -269,6 +276,7 @@ export function App() {
       searching={activeFilter !== ""}
       showSettingsAccount
       onAccountClick={handleOpenAccount}
+      onSettingsClick={handleOpenSettings}
     />
   );
 
@@ -623,7 +631,12 @@ export function App() {
           anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
           transformOrigin={{ vertical: "top", horizontal: "right" }}
         >
-          <MenuItem onClick={() => setChatListMenuAnchor(null)}>
+          <MenuItem
+            onClick={() => {
+              setChatListMenuAnchor(null);
+              handleOpenSettings();
+            }}
+          >
             <SettingsIcon fontSize="small" sx={{ mr: 1.5 }} />
             Settings
           </MenuItem>
@@ -659,7 +672,7 @@ export function App() {
 
       {/* Section nav — icon rail (medium + large) */}
       {layout !== "mobile" && (
-        <SectionNav section={section} onChange={handleSectionChange} isDesktop onAccountClick={handleOpenAccount} />
+        <SectionNav section={section} onChange={handleSectionChange} isDesktop onAccountClick={handleOpenAccount} onSettingsClick={handleOpenSettings} />
       )}
 
       {/* Mail folder drawer — temporary (mobile + medium) */}
@@ -745,7 +758,7 @@ export function App() {
         )}
 
         <Box sx={{ flexGrow: 1, flexDirection: "column", overflow: "hidden", display: section === "calendar" ? "flex" : "none" }}>
-          <CalendarView drawerOpen={section === "calendar" && mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} onAccountClick={handleOpenAccount} />
+          <CalendarView drawerOpen={section === "calendar" && mobileOpen} onDrawerClose={() => setMobileOpen(false)} layout={layout} onHeaderChange={setCalendarHeader} onAccountClick={handleOpenAccount} onSettingsClick={handleOpenSettings} mailboxesVersion={mailboxesVersion} />
         </Box>
         <Box sx={{ flexGrow: 1, overflow: "hidden", display: section === "chat" ? "block" : "none" }}>
           <ChatView onHeaderChange={setChatHeader} />
@@ -786,6 +799,15 @@ export function App() {
         onClose={() => setAccountOpen(false)}
         onSave={setProfile}
         onSignOut={logout}
+      />
+      <SettingsScreen
+        open={settingsOpen}
+        mailboxes={mailboxes.mailboxes}
+        onClose={() => setSettingsOpen(false)}
+        onSaved={() => {
+          reloadMailboxes();
+          setMailboxesVersion((v) => v + 1);
+        }}
       />
     </Box>
   );

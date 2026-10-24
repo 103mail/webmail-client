@@ -20,12 +20,13 @@ interface SidebarProps {
   onSelectFolder: (folderId: string) => void;
   showSettingsAccount?: boolean;
   onAccountClick?: () => void;
+  onSettingsClick?: () => void;
   // While a search is active each folder shows how many of its threads match,
   // in place of how many are unread.
   searching?: boolean;
 }
 
-export function Sidebar({ accounts, selectedFolder, onSelectFolder, showSettingsAccount = false, onAccountClick, searching = false }: SidebarProps) {
+export function Sidebar({ accounts, selectedFolder, onSelectFolder, showSettingsAccount = false, onAccountClick, onSettingsClick, searching = false }: SidebarProps) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Toolbar />
@@ -71,7 +72,7 @@ export function Sidebar({ accounts, selectedFolder, onSelectFolder, showSettings
         <>
           <List disablePadding>
             <ListItem disablePadding>
-              <ListItemButton>
+              <ListItemButton onClick={onSettingsClick}>
                 <ListItemIcon>
                   <SettingsIcon />
                 </ListItemIcon>

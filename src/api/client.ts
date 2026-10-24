@@ -122,6 +122,11 @@ export class ApiClient {
     return this.get<ApiMailbox[]>(`/email/mailbox/${customerId}`, { search });
   }
 
+  // The server keeps whatever is left out, so only the changed fields are sent.
+  editMailbox(mailboxId: number, changes: { name?: string; color?: string; isDefault?: boolean }) {
+    return this.put<boolean>(`/email/mailbox/${mailboxId}`, changes);
+  }
+
   folders(mailboxId: number, search?: string) {
     return this.get<ApiFolder[]>(`/email/folder/${mailboxId}`, { search });
   }
