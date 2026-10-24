@@ -39,6 +39,24 @@ function formatDate(iso: string): string {
 
 const LONG_PRESS_MS = 500;
 
+// The server's summary is the newest message's markdown on one line. A preview
+// wants the words only: link text without its URL, no emphasis or heading
+// marks, no quote markers or rules, and entities decoded. Plain text has no
+// marks to strip, so it comes through as it was.
+function plainText(markdown: string): string {
+  const text = markdown
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/<https?:[^>]*>/g, "")
+    .replace(/(^|\s)(#{1,6}|>+|[-*+]|\d+\.)\s+/g, "$1")
+    // Only the marks mdconv writes; underscores would eat snake_case.
+    .replace(/(\*\*|\*|~~|`)(\S(?:.*?\S)?)\1/g, "$2")
+    .replace(/(^|\s)(-{3,}|\*{3,}|_{3,})(?=\s|$)/g, "$1")
+    .replace(/\\([\\`*_{}\[\]()#+\-.!>])/g, "$1");
+  const decoded = new DOMParser().parseFromString(text, "text/html").documentElement.textContent ?? text;
+  return decoded.replace(/\s+/g, " ").trim();
+}
+
 export function MailList({ threads, loading = false, error = null, onSelect, selectedId, searchQuery = "", onClearSearch, checkedIds, onToggleChecked, onFilteredChange }: MailListProps) {
   const q = searchQuery.toLowerCase();
   // The server has already applied the search, across subject, body and sender.
@@ -101,7 +119,7 @@ export function MailList({ threads, loading = false, error = null, onSelect, sel
       </Box>
     ) : filtered.length === 0 ? (
       <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography color="text.secondary">{loading ? "Loading…" : "No messages"}</Typography>
+        <Typography color="textSecondary">{loading ? "Loading…" : "No messages"}</Typography>
       </Box>
     ) : (
     <List disablePadding>
@@ -115,6 +133,7 @@ export function MailList({ threads, loading = false, error = null, onSelect, sel
           [...new Map(thread.messages.map((m) => [m.from.email, m.from.name])).values()];
         const when = thread.updatedAt ?? thread.messages[0]?.date;
         const count = thread.messageCount ?? thread.messages.length;
+        const preview = plainText(thread.summary ?? thread.messages[thread.messages.length - 1]?.body ?? "");
         const weight = thread.read ? 400 : 700;
         const checked = checkedIds.has(thread.id);
 
@@ -126,7 +145,16 @@ export function MailList({ threads, loading = false, error = null, onSelect, sel
               onPointerDown={() => handlePointerDown(thread.id)}
               onPointerUp={handlePointerUp}
               onPointerLeave={handlePointerUp}
-              sx={{ alignItems: "flex-start", py: 1.5, px: 3, userSelect: "none" }}
+              sx={{
+                alignItems: "flex-start",
+                py: 1.5,
+                px: 3,
+                userSelect: "none",
+                // Unread rows are marked by a bar on the left, as in Outlook. Read
+                // rows keep the same width in transparent so nothing shifts.
+                borderLeft: "4px solid",
+                borderLeftColor: thread.read ? "transparent" : "primary.main",
+              }}
             >
               {selectionMode && (
                 <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
@@ -154,21 +182,33 @@ export function MailList({ threads, loading = false, error = null, onSelect, sel
                         />
                       )}
                     </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+                    <Typography variant="caption" color="textSecondary" sx={{ flexShrink: 0 }}>
                       {when ? formatDate(when) : ""}
                     </Typography>
                   </Box>
                 }
                 secondary={
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    noWrap
-                    component="span"
-                    sx={{ fontWeight: weight === 700 ? 600 : 400 }}
-                  >
-                    {thread.subject}
-                  </Typography>
+                  <>
+                    <Typography
+                      variant="body2"
+                      color="textPrimary"
+                      noWrap
+                      component="span"
+                      sx={{ display: "block", fontWeight: weight === 700 ? 600 : 400 }}
+                    >
+                      {thread.subject}
+                    </Typography>
+                    {/* Always rendered, so every row is the same height. */}
+                    <Typography
+                      variant="body2"
+                      color="textDisabled"
+                      noWrap
+                      component="span"
+                      sx={{ display: "block" }}
+                    >
+                      {preview || "\u00a0"}
+                    </Typography>
+                  </>
                 }
               />
             </ListItemButton>

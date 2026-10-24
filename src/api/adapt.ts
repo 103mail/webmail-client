@@ -94,6 +94,7 @@ export function toThread(thread: ApiThread, folderId: string): MailThread {
     participants,
     updatedAt: thread.updatedAt,
     attachmentCount: thread.attachmentCount,
+    summary: thread.summary,
     messagesLoaded: false,
     messages: [
       {

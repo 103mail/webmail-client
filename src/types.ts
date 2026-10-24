@@ -42,6 +42,8 @@ export interface MailThread {
   updatedAt?: string;
   messageCount?: number;
   attachmentCount?: number;
+  /* The newest message's opening, on one line, as the server summarises it. */
+  summary?: string;
   /* False until the messages have actually been fetched; until then `messages`
      holds a single stand-in built from the thread summary. */
   messagesLoaded?: boolean;
