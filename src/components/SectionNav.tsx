@@ -34,7 +34,10 @@ export function SectionNav({ section, onChange, isDesktop, onAccountClick }: Sec
       <Box sx={{ width: 60, flexShrink: 0 }} />
       <Box
         sx={{
+          // The padding and border count towards the 60px, or the fixed rail is
+          // wider than its spacer and covers the first pixels of the next pane.
           width: 60,
+          boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
