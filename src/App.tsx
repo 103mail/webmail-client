@@ -128,17 +128,21 @@ export function App() {
     reloadMailboxes();
   }, [reloadThreads, reloadMailboxes]);
 
-  // Auto-select first thread in multi-pane mode (only when no active filter)
+  // Auto-select first thread in multi-pane mode (only when no active filter).
+  // Right after a folder change the list still holds the previous folder's
+  // threads while the new ones load; picking from those would select a thread
+  // that is not in the new list, and nothing would look selected.
   useEffect(() => {
     if (!multiPane || activeFilter) return;
-    if (folderThreads.length > 0 && !selectedThread) {
+    if (folderThreads.length > 0 && folderThreads[0].folderId !== selectedFolder) return;
+    if (folderThreads.length > 0 && (!selectedThread || selectedThread.folderId !== selectedFolder)) {
       setSelectedThread(folderThreads[0]);
       setMailView("thread");
     } else if (folderThreads.length === 0) {
       setSelectedThread(null);
       setMailView("list");
     }
-  }, [multiPane, folderThreads, selectedThread, activeFilter]);
+  }, [multiPane, folderThreads, selectedThread, selectedFolder, activeFilter]);
 
   const handleSelectFolder = (folderId: string) => {
     setSelectedFolder(folderId);
@@ -247,6 +251,11 @@ export function App() {
     currentAccount
       ? currentAccount.email
       : null;
+
+  // The chat view stays mounted while another section is shown, and keeps
+  // publishing its header, so its subtitle (a presence such as "online") only
+  // belongs in the AppBar while chat is the section on screen.
+  const subtitle = section === "chat" ? chatHeader?.subtitle : mailSubtitle;
 
   const sidebarDesktop = (
     <Sidebar
@@ -460,9 +469,9 @@ export function App() {
               ) : (
                 <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
                   {title}
-                  {(mailSubtitle || chatHeader?.subtitle) && (
+                  {subtitle && (
                     <Box component="span" sx={{ ml: 1, fontSize: 13, fontWeight: 400, opacity: 0.8 }}>
-                      {mailSubtitle ?? chatHeader?.subtitle}
+                      {subtitle}
                     </Box>
                   )}
                 </Typography>
