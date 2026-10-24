@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Box, Typography, alpha, useTheme } from "@mui/material";
-import { format, getISOWeek, startOfDay } from "date-fns";
+import { format, getISOWeek } from "date-fns";
 import type { CalendarEvent } from "./types";
 import {
   DAY_END_HOUR,
   DAY_START_HOUR,
   HOUR_HEIGHT,
+  eventColors,
   eventsForDay,
   isSameDay,
   layoutOverlaps,
@@ -77,7 +78,7 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
     (start, end) => onCreateEvent?.(start, end),
   );
   const today = new Date();
-  const todayStart = startOfDay(today).getTime();
+  const now = today.getTime();
 
   const hours = useMemo(() => {
     const arr: number[] = [];
@@ -245,8 +246,7 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
                   key={ev.id}
                   onClick={(e) => { e.stopPropagation(); onSelectEvent?.(ev); }}
                   sx={{
-                    bgcolor: ev.color,
-                    color: "#fff",
+                    ...eventColors(ev.color, theme),
                     borderRadius: 1,
                     px: 0.8,
                     py: 0.2,
@@ -306,7 +306,6 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
             const dayEvents = eventsForDay(events, day).filter((e) => !e.allDay);
             const overlaps = layoutOverlaps(dayEvents);
             const isToday = isSameDay(day, today);
-            const isPast = startOfDay(day).getTime() < todayStart;
             const isWeekend = day.getDay() === 0 || day.getDay() === 6;
             const dragPreview = drag && drag.dayIndex === dayIndex;
             const rawStart = dragPreview ? Math.min(drag.startMinute, drag.currentMinute) : 0;
@@ -331,7 +330,10 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
                   // Past and outside working hours are separate shades that
                   // add up. One shade for both made a past week, which is
                   // every day but Sunday on a Sunday, lose its working hours.
+                  // Past is per hour, so today's earlier hours match the days
+                  // before it.
                   const offHours = isWeekend || h < BUSINESS_START || h >= BUSINESS_END;
+                  const isPast = new Date(day).setHours(h + 1, 0, 0, 0) <= now;
                   const shade = (offHours ? 0.04 : 0) + (isPast ? 0.03 : 0);
                   return (
                     <Box
@@ -419,6 +421,7 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
 
                 {dayEvents.map((ev) => {
                   const layout = overlaps.get(ev.id) ?? { col: 0, cols: 1 };
+                  const isPast = ev.end.getTime() <= now;
                   const evStartMin = isSameDay(ev.start, day)
                     ? minutesFromStart(ev.start)
                     : DAY_START_HOUR * 60;
@@ -445,8 +448,7 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
                         ...(isLastCol
                           ? { right: 2 }
                           : { width: `calc(${widthPct}% - 4px)` }),
-                        bgcolor: ev.color,
-                        color: "#fff",
+                        ...eventColors(ev.color, theme),
                         borderRadius: 1,
                         boxShadow: 1,
                         px: 0.8,
@@ -456,19 +458,7 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
                         zIndex: 2,
                         transition: theme.transitions.create(["box-shadow"]),
                         "&:hover": { boxShadow: 3 },
-                        ...(isPast && {
-                          "&::after": {
-                            content: '""',
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            bgcolor: "rgba(255, 255, 255, 0.6)",
-                            borderRadius: 1,
-                            pointerEvents: "none",
-                          },
-                        }),
+                        ...(isPast && { opacity: 0.55 }),
                       }}
                     >
                       <Typography

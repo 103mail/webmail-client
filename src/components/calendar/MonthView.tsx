@@ -1,7 +1,7 @@
 import { Box, Typography, useTheme } from "@mui/material";
 import { format, isSameMonth } from "date-fns";
 import type { CalendarEvent } from "./types";
-import { eventsForDay, isSameDay, monthGrid } from "./utils";
+import { eventColors, eventsForDay, isSameDay, monthGrid } from "./utils";
 
 interface MonthViewProps {
   anchor: Date;
@@ -114,8 +114,7 @@ export function MonthView({ anchor, events, onSelectEvent, onSelectDay }: MonthV
                     onSelectEvent?.(ev);
                   }}
                   sx={{
-                    bgcolor: ev.color,
-                    color: "#fff",
+                    ...eventColors(ev.color, theme),
                     borderRadius: 0.5,
                     px: 0.6,
                     py: 0.1,

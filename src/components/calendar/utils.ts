@@ -1,5 +1,19 @@
 import { addDays, startOfDay, startOfMonth, startOfWeek, endOfMonth, endOfWeek } from "date-fns";
+import { darken, lighten } from "@mui/material/styles";
+import type { Theme } from "@mui/material/styles";
 import type { CalendarEvent } from "./types";
+
+// An event is a light tint of its mailbox colour with dark text and a stripe
+// of the full colour, so the colour tells mailboxes apart without a block of
+// strong red or blue. The tint is opaque so overlapping events stay legible.
+export function eventColors(color: string, theme: Theme) {
+  const dark = theme.palette.mode === "dark";
+  return {
+    bgcolor: dark ? darken(color, 0.6) : lighten(color, 0.85),
+    color: dark ? lighten(color, 0.7) : darken(color, 0.5),
+    borderLeft: `3px solid ${color}`,
+  };
+}
 
 export const HOUR_HEIGHT = 80;
 export const DAY_START_HOUR = 0;
