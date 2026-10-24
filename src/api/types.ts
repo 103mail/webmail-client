@@ -149,6 +149,16 @@ export interface ApiChat {
   lastMessageAt: string;
 }
 
+export interface ApiChatParticipant {
+  participantId: number;
+  email: string;
+  name: string;
+  role: "creator" | "admin" | "member";
+  status: "online" | "offline" | "away";
+  joinedAt: string;
+  leftAt: string | null;
+}
+
 export interface ApiDeliveryStatus {
   sent: number;
   delivered: number;

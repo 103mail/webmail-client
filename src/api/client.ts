@@ -11,6 +11,7 @@ import type {
   ApiChat,
   ApiChatMessage,
   ApiChatSession,
+  ApiChatParticipant,
   ApiContact,
   ApiFolder,
   ApiMailbox,
@@ -216,8 +217,9 @@ export class ApiClient {
 
   /* ── chat ── */
 
-  chats(customerId: number, search?: string) {
-    return this.get<ApiChat[]>(`/chat/chat/${customerId}`, { search });
+  // Chats belong to a mailbox, not to the customer.
+  chats(mailboxId: number, search?: string) {
+    return this.get<ApiChat[]>(`/chat/chat/${mailboxId}`, { search });
   }
 
   chatMessages(chatId: number, search?: string) {
@@ -228,12 +230,27 @@ export class ApiClient {
     return this.post<number | null>(`/chat/message/${chatId}`, { body, attachments });
   }
 
-  addChat(customerId: number, type: "direct" | "group", participants: string[], name?: string) {
-    return this.post<number | null>(`/chat/chat/${customerId}`, { type, participants, name });
+  addChat(mailboxId: number, type: "direct" | "group", participants: string[], name?: string) {
+    return this.post<number | null>(`/chat/chat/${mailboxId}`, { type, participants, name });
   }
 
   editChat(chatId: number, changes: { name?: string; muted?: boolean }) {
     return this.put<boolean>(`/chat/chat/${chatId}`, changes);
+  }
+
+  // Hides the chat from this user only. They stay a participant, so the next
+  // message brings it back with its history.
+  deleteChat(chatId: number) {
+    return this.del<boolean>(`/chat/chat/${chatId}`);
+  }
+
+  chatParticipants(chatId: number) {
+    return this.get<ApiChatParticipant[]>(`/chat/participant/${chatId}`);
+  }
+
+  // Takes a participant id, not a chat id. Leaving is removing yourself.
+  removeChatParticipant(participantId: number) {
+    return this.del<boolean>(`/chat/participant/${participantId}`);
   }
 
   presence(userIds: number[]) {

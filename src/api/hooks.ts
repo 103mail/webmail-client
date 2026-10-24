@@ -234,11 +234,26 @@ export interface ChatList {
 
 const NO_CHATS: ChatList = { chats: [], participants: new Map() };
 
-export function useChats(search: string): Async<ChatList> {
+// The mailbox chats are listed in and created in: the default one. Read once,
+// rather than on every list reload, because the list re-reads on each message.
+export function useChatMailbox(): number | null {
+  const { user, api } = useSession();
+  return useAsync<number | null>(
+    async () => {
+      const mailboxes = await api.mailboxes(user.customerId);
+      return (mailboxes.find((m) => m.isDefault) ?? mailboxes[0])?.mailboxId ?? null;
+    },
+    null,
+    [user.customerId]
+  ).data;
+}
+
+export function useChats(mailboxId: number | null, search: string): Async<ChatList> {
   const { user, api } = useSession();
   return useAsync<ChatList>(
     async () => {
-      const chats = await api.chats(user.customerId, search || undefined);
+      if (mailboxId === null) return NO_CHATS;
+      const chats = await api.chats(mailboxId, search || undefined);
       const participants = new Map<string, ChatParticipant>();
       for (const chat of chats) {
         for (const p of toChatParticipants(chat)) {
@@ -248,7 +263,7 @@ export function useChats(search: string): Async<ChatList> {
       return { chats: chats.map((chat) => toChat(chat, user.email)), participants };
     },
     NO_CHATS,
-    [user.customerId, search]
+    [mailboxId, search]
   );
 }
 

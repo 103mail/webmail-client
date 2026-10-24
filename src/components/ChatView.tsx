@@ -4,7 +4,13 @@ import {
   Avatar,
   Badge,
   Box,
+  Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   Drawer,
   IconButton,
@@ -15,6 +21,7 @@ import {
   ListItemText,
   Paper,
   Popover,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -36,11 +43,15 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DescriptionIcon from "@mui/icons-material/Description";
 import DownloadIcon from "@mui/icons-material/Download";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import AddCommentIcon from "@mui/icons-material/AddComment";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
+import LogoutIcon from "@mui/icons-material/Logout";
 import type { Chat, ChatAttachment, ChatImage, ChatMessage, ChatParticipant } from "../types";
 import { useSession } from "../auth/AuthContext";
-import { useChats, useChatMessages } from "../api/hooks";
+import { useChatMailbox, useChats, useChatMessages } from "../api/hooks";
 import { useChatSocket } from "../api/useChatSocket";
 import { toUploads, toBlobUrl } from "../api/adapt";
+import { NewChatDialog } from "./NewChatDialog";
 
 export interface ChatHeaderState {
   /** Title/subtitle to surface in the AppBar when the conversation is the only visible pane. */
@@ -60,6 +71,7 @@ export interface ChatHeaderState {
   isMuted?: boolean;
   onToggleMute?: () => void;
   onDelete?: () => void;
+  onLeave?: () => void;
   showInfoButton?: boolean;
   onToggleInfo?: () => void;
 }
@@ -283,13 +295,18 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const [activeFilter, setActiveFilter] = useState("");
   const messagesEnd = useRef<HTMLDivElement>(null);
   const unreadSnapshot = useRef<Record<string, number>>({});
+  const [newChatOpen, setNewChatOpen] = useState(false);
+  // Delete hides the chat until the next message; leave also stops the
+  // messages, which is what makes it the stronger of the two.
+  const [confirmAction, setConfirmAction] = useState<"delete" | "leave" | null>(null);
 
   const multiPane = isMd;
   const threePane = isXl;
 
   // The chat list and the open conversation are two calls. Both poll, because
   // the WebSocket bridge ADR 13 describes is not implemented in the API server.
-  const { data: chatData, reload: reloadChats } = useChats(activeFilter);
+  const mailboxId = useChatMailbox();
+  const { data: chatData, reload: reloadChats } = useChats(mailboxId, activeFilter);
   const chatList = chatData.chats;
   const { data: openMessages, reload: reloadMessages, append } = useChatMessages(selectedChatId);
   const [sendError, setSendError] = useState("");
@@ -418,7 +435,8 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           else next.add(selectedChat.id);
           return next;
         }),
-      onDelete: () => {},
+      onDelete: () => setConfirmAction("delete"),
+      onLeave: () => setConfirmAction("leave"),
       showInfoButton: !threePane,
       onToggleInfo: () => setShowInfo((v) => !v),
     });
@@ -470,6 +488,50 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
       return;
     }
     socket.sendMessage(selectedChatId, body);
+  };
+
+  // A direct chat with someone already in the list is opened rather than made
+  // again: the server would happily create a second one.
+  const handleCreateChat = async (participants: string[], name?: string) => {
+    if (mailboxId === null) throw new Error("No mailbox to start a chat in.");
+    if (!name) {
+      const existing = chats.find(
+        (c) => !c.isGroup && c.participants.some((p) => p.toLowerCase() === participants[0].toLowerCase()),
+      );
+      if (existing) {
+        handleSelectChat(existing.id);
+        return;
+      }
+    }
+    const chatId = await api.addChat(mailboxId, name ? "group" : "direct", participants, name);
+    if (!chatId) throw new Error("Could not start the chat.");
+    reloadChats();
+    handleSelectChat(String(chatId));
+  };
+
+  const handleConfirmAction = () => {
+    if (!selectedChatId || !confirmAction) return;
+    const chatId = Number(selectedChatId);
+    const action = confirmAction;
+    setConfirmAction(null);
+    // Leaving is removing your own participant row, then hiding the chat as a
+    // delete does, so it does not linger in the list without new messages.
+    const work = action === "leave"
+      ? api.chatParticipants(chatId).then((participants) => {
+          const mine = participants.find((p) => p.email.toLowerCase() === me.toLowerCase());
+          if (!mine) throw new Error("You are not a participant of this chat.");
+          return api.removeChatParticipant(mine.participantId);
+        }).then(() => api.deleteChat(chatId))
+      : api.deleteChat(chatId);
+    void work.then(
+      () => {
+        setSelectedChatId(null);
+        setShowInfo(false);
+        reloadChats();
+      },
+      (err: unknown) =>
+        setSendError(err instanceof Error ? err.message : `Could not ${action} the chat.`),
+    );
   };
 
   // Bytes come back base64 in JSON rather than from a URL, so the download is
@@ -562,6 +624,17 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           variant={!showGroups ? "filled" : "outlined"}
           onClick={() => setShowGroups((v) => !v)}
         />
+        <Tooltip title="New chat">
+          <IconButton
+            size="small"
+            aria-label="new chat"
+            onClick={() => setNewChatOpen(true)}
+            disabled={mailboxId === null}
+            sx={{ ml: "auto" }}
+          >
+            <AddCommentIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {activeFilter && (
@@ -1004,20 +1077,54 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           </List>
         </Box>
       )}
+
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", px: 1, py: 1 }}>
+        <Button color="error" startIcon={<DeleteOutlineIcon />} onClick={() => setConfirmAction("delete")}>
+          Delete chat
+        </Button>
+        <Button color="error" startIcon={<LogoutIcon />} onClick={() => setConfirmAction("leave")}>
+          Leave chat
+        </Button>
+      </Box>
     </Box>
   ) : null;
+
+  const dialogs = (
+    <>
+      <NewChatDialog open={newChatOpen} onClose={() => setNewChatOpen(false)} onCreate={handleCreateChat} />
+      <Dialog open={confirmAction !== null} onClose={() => setConfirmAction(null)}>
+        <DialogTitle>
+          {confirmAction === "leave" ? "Leave" : "Delete"} {selectedChat ? `"${selectedChat.name}"` : "chat"}?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {confirmAction === "leave"
+              ? "You will stop receiving messages in this chat and it is removed from your list. The others see that you left."
+              : "The chat is removed from your list. You stay a participant, so it comes back with its history when someone sends a new message."}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmAction(null)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleConfirmAction}>
+            {confirmAction === "leave" ? "Leave chat" : "Delete chat"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
 
   /* ── Layout assembly ── */
 
   // Mobile: single pane switching
   if (!multiPane) {
     if (selectedChatId && showInfo && selectedChat) {
-      return <Box sx={{ height: "100%", overflow: "auto" }}>{infoPane}</Box>;
+      return <Box sx={{ height: "100%", overflow: "auto" }}>{infoPane}{dialogs}</Box>;
     }
     if (selectedChatId) {
-      return <Box sx={{ height: "100%" }}>{conversationPane}</Box>;
+      return <Box sx={{ height: "100%" }}>{conversationPane}{dialogs}</Box>;
     }
-    return <Box sx={{ height: "100%" }}>{chatListPane}</Box>;
+    return <Box sx={{ height: "100%" }}>{chatListPane}{dialogs}</Box>;
   }
 
   // Desktop: two or three pane
@@ -1064,6 +1171,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           {infoPane}
         </Box>
       )}
+      {dialogs}
     </Box>
   );
 }

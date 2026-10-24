@@ -44,6 +44,8 @@ import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
+import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import type { MailThread } from "./types";
@@ -75,6 +77,7 @@ export function App() {
   const [calendarHeader, setCalendarHeader] = useState<CalendarHeaderState | null>(null);
   const [calViewAnchor, setCalViewAnchor] = useState<null | HTMLElement>(null);
   const [chatListMenuAnchor, setChatListMenuAnchor] = useState<null | HTMLElement>(null);
+  const [chatMenuAnchor, setChatMenuAnchor] = useState<null | HTMLElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const { user, api } = useSession();
   const { logout } = useAuth();
@@ -525,11 +528,6 @@ export function App() {
                       {chatHeader!.isMuted ? <VolumeUpIcon /> : <VolumeOffIcon />}
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Delete chat">
-                    <IconButton color="inherit" aria-label="delete chat" onClick={chatHeader!.onDelete}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
                   {chatHeader!.showInfoButton && (
                     <Tooltip title="Info">
                       <IconButton color="inherit" aria-label="show info" onClick={chatHeader!.onToggleInfo}>
@@ -537,6 +535,16 @@ export function App() {
                       </IconButton>
                     </Tooltip>
                   )}
+                  <Tooltip title="More">
+                    <IconButton
+                      color="inherit"
+                      aria-label="chat options"
+                      edge="end"
+                      onClick={(e) => setChatMenuAnchor(e.currentTarget)}
+                    >
+                      <MoreVertIcon />
+                    </IconButton>
+                  </Tooltip>
                 </>
               )}
 
@@ -638,6 +646,32 @@ export function App() {
           >
             <AccountCircleIcon fontSize="small" sx={{ mr: 1.5 }} />
             Account
+          </MenuItem>
+        </Menu>
+        <Menu
+          anchorEl={chatMenuAnchor}
+          open={Boolean(chatMenuAnchor)}
+          onClose={() => setChatMenuAnchor(null)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <MenuItem
+            onClick={() => {
+              setChatMenuAnchor(null);
+              chatHeader?.onDelete?.();
+            }}
+          >
+            <DeleteOutlineIcon fontSize="small" sx={{ mr: 1.5 }} />
+            Delete chat
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setChatMenuAnchor(null);
+              chatHeader?.onLeave?.();
+            }}
+          >
+            <LogoutIcon fontSize="small" sx={{ mr: 1.5 }} />
+            Leave chat
           </MenuItem>
         </Menu>
         <Menu
