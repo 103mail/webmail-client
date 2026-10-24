@@ -270,9 +270,11 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const isXl = useMediaQuery(theme.breakpoints.up("xl"));
   const { user, api } = useSession();
 
-  // Chat participants are addressed by email, so the signed-in address is what
-  // marks a message as this user's own. The fixtures used the literal "me".
-  const me = user.email;
+  // Chat participants are addressed by email, and this user chats as their
+  // mailbox's address, which is not always the one they signed in with. Until
+  // the mailbox is known the login stands in.
+  const chatMailbox = useChatMailbox();
+  const me = chatMailbox?.address ?? user.email.toLowerCase();
 
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
@@ -305,8 +307,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
 
   // The chat list and the open conversation are two calls. Both poll, because
   // the WebSocket bridge ADR 13 describes is not implemented in the API server.
-  const mailboxId = useChatMailbox();
-  const { data: chatData, reload: reloadChats } = useChats(mailboxId, activeFilter);
+  const { data: chatData, reload: reloadChats } = useChats(chatMailbox, activeFilter);
   const chatList = chatData.chats;
   const { data: openMessages, reload: reloadMessages, append } = useChatMessages(selectedChatId);
   const [sendError, setSendError] = useState("");
@@ -492,7 +493,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   // A direct chat with someone already in the list is opened rather than made
   // again: the server would happily create a second one.
   const handleCreateChat = async (participants: string[], name?: string) => {
-    if (mailboxId === null) throw new Error("No mailbox to start a chat in.");
+    if (chatMailbox === null) throw new Error("No mailbox to start a chat in.");
     if (!name) {
       const existing = chats.find(
         (c) => !c.isGroup && c.participants.some((p) => p.toLowerCase() === participants[0].toLowerCase()),
@@ -502,7 +503,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
         return;
       }
     }
-    const chatId = await api.addChat(mailboxId, name ? "group" : "direct", participants, name);
+    const chatId = await api.addChat(chatMailbox.mailboxId, name ? "group" : "direct", participants, name);
     if (!chatId) throw new Error("Could not start the chat.");
     reloadChats();
     handleSelectChat(String(chatId));
@@ -628,7 +629,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
             size="small"
             aria-label="new chat"
             onClick={() => setNewChatOpen(true)}
-            disabled={mailboxId === null}
+            disabled={chatMailbox === null}
             sx={{ ml: "auto" }}
           >
             <AddCommentIcon fontSize="small" />

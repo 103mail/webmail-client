@@ -234,36 +234,47 @@ export interface ChatList {
 
 const NO_CHATS: ChatList = { chats: [], participants: new Map() };
 
+export interface ChatMailbox {
+  mailboxId: number;
+  // The address this user chats as. It is the mailbox's, not the login's: on
+  // 103mail.com you sign in as maurits@vdschee.nl and chat as
+  // mevdschee@103mail.com.
+  address: string;
+}
+
 // The mailbox chats are listed in and created in: the default one. Read once,
 // rather than on every list reload, because the list re-reads on each message.
-export function useChatMailbox(): number | null {
+export function useChatMailbox(): ChatMailbox | null {
   const { user, api } = useSession();
-  return useAsync<number | null>(
+  return useAsync<ChatMailbox | null>(
     async () => {
       const mailboxes = await api.mailboxes(user.customerId);
-      return (mailboxes.find((m) => m.isDefault) ?? mailboxes[0])?.mailboxId ?? null;
+      const mailbox = mailboxes.find((m) => m.isDefault) ?? mailboxes[0];
+      return mailbox
+        ? { mailboxId: mailbox.mailboxId, address: mailbox.senderEmail.toLowerCase() }
+        : null;
     },
     null,
     [user.customerId]
   ).data;
 }
 
-export function useChats(mailboxId: number | null, search: string): Async<ChatList> {
-  const { user, api } = useSession();
+export function useChats(mailbox: ChatMailbox | null, search: string): Async<ChatList> {
+  const { api } = useSession();
   return useAsync<ChatList>(
     async () => {
-      if (mailboxId === null) return NO_CHATS;
-      const chats = await api.chats(mailboxId, search || undefined);
+      if (mailbox === null) return NO_CHATS;
+      const chats = await api.chats(mailbox.mailboxId, search || undefined);
       const participants = new Map<string, ChatParticipant>();
       for (const chat of chats) {
         for (const p of toChatParticipants(chat)) {
           if (!participants.has(p.email)) participants.set(p.email, p);
         }
       }
-      return { chats: chats.map((chat) => toChat(chat, user.email)), participants };
+      return { chats: chats.map((chat) => toChat(chat, mailbox.address)), participants };
     },
     NO_CHATS,
-    [mailboxId, search]
+    [mailbox?.mailboxId, mailbox?.address, search]
   );
 }
 
