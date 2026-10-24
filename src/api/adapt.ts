@@ -94,6 +94,7 @@ export function toThread(thread: ApiThread, folderId: string): MailThread {
     participants,
     updatedAt: thread.updatedAt,
     attachmentCount: thread.attachmentCount,
+    messageCount: thread.messageCount,
     summary: thread.summary,
     messagesLoaded: false,
     messages: [
@@ -113,7 +114,6 @@ export function withMessages(thread: MailThread, messages: ApiMessage[]): MailTh
   return {
     ...thread,
     messages: adapted,
-    messageCount: adapted.length,
     messagesLoaded: true,
     participants: [
       ...new Map(adapted.map((m) => [m.from.email, m.from])).values(),

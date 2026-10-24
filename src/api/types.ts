@@ -30,6 +30,8 @@ export interface ApiMailbox {
   mailboxId: number;
   name: string;
   color: string;
+  /** Threads in the mailbox, or only the matching ones when searched. */
+  threadCount: number;
   unreadCount: number;
   isDefault: boolean;
   isShared: boolean;
@@ -40,6 +42,8 @@ export interface ApiMailbox {
 export interface ApiFolder {
   folderId: number;
   name: string;
+  /** Threads in the folder, or only the matching ones when searched. */
+  threadCount: number;
   unreadCount: number;
   isDefault: boolean;
 }
@@ -49,6 +53,8 @@ export interface ApiThread {
   subject: string;
   summary: string;
   unreadCount: number;
+  /** Messages in the thread, or only those matching when the listing is searched. */
+  messageCount: number;
   subscribers: Party[];
   attachmentCount: number;
   updatedAt: string;
