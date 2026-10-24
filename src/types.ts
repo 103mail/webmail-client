@@ -7,6 +7,8 @@ export interface MailFolder {
   id: string;
   name: string;
   unreadCount: number;
+  /* Threads in the folder, or only the matching ones while searching. */
+  threadCount: number;
 }
 
 export interface MailAccount {

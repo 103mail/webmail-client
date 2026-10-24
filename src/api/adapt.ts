@@ -58,6 +58,7 @@ export function toFolder(folder: ApiFolder): MailFolder {
     id: String(folder.folderId),
     name: folder.name,
     unreadCount: folder.unreadCount,
+    threadCount: folder.threadCount,
   };
 }
 

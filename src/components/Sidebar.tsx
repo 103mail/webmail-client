@@ -20,9 +20,12 @@ interface SidebarProps {
   onSelectFolder: (folderId: string) => void;
   showSettingsAccount?: boolean;
   onAccountClick?: () => void;
+  // While a search is active each folder shows how many of its threads match,
+  // in place of how many are unread.
+  searching?: boolean;
 }
 
-export function Sidebar({ accounts, selectedFolder, onSelectFolder, showSettingsAccount = false, onAccountClick }: SidebarProps) {
+export function Sidebar({ accounts, selectedFolder, onSelectFolder, showSettingsAccount = false, onAccountClick, searching = false }: SidebarProps) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Toolbar />
@@ -46,9 +49,13 @@ export function Sidebar({ accounts, selectedFolder, onSelectFolder, showSettings
                   </ListItemIcon>
                   <ListItemText
                     primary={folder.name}
-                    sx={folder.unreadCount > 0 ? { "& .MuiListItemText-primary": { fontWeight: 700 } } : undefined}
+                    sx={!searching && folder.unreadCount > 0 ? { "& .MuiListItemText-primary": { fontWeight: 700 } } : undefined}
                   />
-                  {folder.unreadCount > 0 && (
+                  {searching ? (
+                    <Typography variant="body2" color={folder.threadCount > 0 ? "textPrimary" : "textSecondary"}>
+                      {folder.threadCount}
+                    </Typography>
+                  ) : folder.unreadCount > 0 && (
                     <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>
                       {folder.unreadCount}
                     </Typography>

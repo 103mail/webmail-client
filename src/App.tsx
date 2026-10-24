@@ -98,7 +98,7 @@ export function App() {
   // Mailboxes and their folders, then the threads in the selected folder, then
   // that thread's messages. Three levels, three requests: the API has no call
   // that returns a folder's threads with their bodies.
-  const { data: mailboxes, reload: reloadMailboxes } = useAccounts();
+  const { data: mailboxes, reload: reloadMailboxes } = useAccounts(activeFilter);
   const accounts = mailboxes.accounts;
   const { data: folderThreads, loading: threadsLoading, error: threadsError, reload: reloadThreads } =
     useThreads(selectedFolder, activeFilter);
@@ -257,6 +257,7 @@ export function App() {
       accounts={accounts}
       selectedFolder={selectedFolder}
       onSelectFolder={handleSelectFolder}
+      searching={activeFilter !== ""}
     />
   );
 
@@ -265,6 +266,7 @@ export function App() {
       accounts={accounts}
       selectedFolder={selectedFolder}
       onSelectFolder={handleSelectFolder}
+      searching={activeFilter !== ""}
       showSettingsAccount
       onAccountClick={handleOpenAccount}
     />
@@ -334,9 +336,11 @@ export function App() {
           forwardRequested={forwardRequested}
           onPaneChange={setHasPaneOpen}
           onSent={() => {
-            // A reply is a new message on the same thread, so the thread has to
-            // be re-read rather than patched in place.
-            setSelectedThread(null);
+            // A reply is a new message on the same thread, so its messages are
+            // read again. The thread stays selected: clearing it left the single
+            // pane with nothing to show, and in multi-pane mode the auto-select
+            // could pick another thread.
+            setSelectedThread((t) => (t ? { ...t, messagesLoaded: false } : t));
             refresh();
           }}
         />

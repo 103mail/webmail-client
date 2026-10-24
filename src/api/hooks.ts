@@ -88,14 +88,15 @@ const NO_ACCOUNTS: Accounts = {
 };
 
 // Mailboxes and their folders. Two round trips per mailbox is the shape of the
-// API: /email/mailbox/{customerId} then /email/folder/{mailboxId}.
-export function useAccounts(): Async<Accounts> {
+// API: /email/mailbox/{customerId} then /email/folder/{mailboxId}. With a
+// search, each folder's threadCount is the number of threads that match.
+export function useAccounts(search = ""): Async<Accounts> {
   const { user, api } = useSession();
   return useAsync<Accounts>(
     async () => {
       const mailboxes = await api.mailboxes(user.customerId);
       const folderSets = await Promise.all(
-        mailboxes.map((mailbox) => api.folders(mailbox.mailboxId))
+        mailboxes.map((mailbox) => api.folders(mailbox.mailboxId, search || undefined))
       );
       const folderToMailbox = new Map<string, number>();
       let defaultFolderId: string | null = null;
@@ -116,7 +117,7 @@ export function useAccounts(): Async<Accounts> {
       };
     },
     NO_ACCOUNTS,
-    [user.customerId]
+    [user.customerId, search]
   );
 }
 
@@ -153,7 +154,13 @@ export function useThreadMessages(thread: MailThread | null): {
       setFilled(null);
       return;
     }
-    setFilled(thread);
+    // Reloading the thread that is on screen, after a reply, keeps its
+    // messages up until the new ones arrive, rather than flashing the summary.
+    setFilled((previous) =>
+      previous && previous.id === thread.id && previous.messagesLoaded && !thread.messagesLoaded
+        ? previous
+        : thread
+    );
     if (thread.messagesLoaded) return;
 
     const mine = ++run.current;
