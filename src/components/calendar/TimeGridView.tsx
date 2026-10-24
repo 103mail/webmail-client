@@ -327,22 +327,27 @@ export function TimeGridView({ days, events, onSelectEvent, onCreateEvent, onCre
                   cursor: drag ? "row-resize" : "crosshair",
                 }}
               >
-                {hours.map((h) => (
-                  <Box
-                    key={h}
-                    sx={{
-                      position: "absolute",
-                      top: (h - DAY_START_HOUR) * HOUR_HEIGHT,
-                      left: 0,
-                      right: 0,
-                      height: HOUR_HEIGHT,
-                      borderTop: h === DAY_START_HOUR ? "none" : `1px solid ${alpha(theme.palette.divider, 0.15)}`,
-                      ...(isPast || isWeekend || (h < BUSINESS_START || h >= BUSINESS_END)) && {
-                        bgcolor: alpha(theme.palette.text.primary, 0.03),
-                      },
-                    }}
-                  />
-                ))}
+                {hours.map((h) => {
+                  // Past and outside working hours are separate shades that
+                  // add up. One shade for both made a past week, which is
+                  // every day but Sunday on a Sunday, lose its working hours.
+                  const offHours = isWeekend || h < BUSINESS_START || h >= BUSINESS_END;
+                  const shade = (offHours ? 0.04 : 0) + (isPast ? 0.03 : 0);
+                  return (
+                    <Box
+                      key={h}
+                      sx={{
+                        position: "absolute",
+                        top: (h - DAY_START_HOUR) * HOUR_HEIGHT,
+                        left: 0,
+                        right: 0,
+                        height: HOUR_HEIGHT,
+                        borderTop: h === DAY_START_HOUR ? "none" : `1px solid ${alpha(theme.palette.divider, 0.15)}`,
+                        ...(shade > 0 && { bgcolor: alpha(theme.palette.text.primary, shade) }),
+                      }}
+                    />
+                  );
+                })}
 
                 {/* Half-hour lines */}
                 {hours.map((h) => (
