@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Divider,
   Drawer,
+  Fab,
   IconButton,
   InputBase,
   List,
@@ -21,7 +22,6 @@ import {
   ListItemText,
   Paper,
   Popover,
-  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -43,7 +43,8 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DescriptionIcon from "@mui/icons-material/Description";
 import DownloadIcon from "@mui/icons-material/Download";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
-import AddCommentIcon from "@mui/icons-material/AddComment";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import type { Chat, ChatAttachment, ChatImage, ChatMessage, ChatParticipant } from "../types";
@@ -67,12 +68,7 @@ export interface ChatHeaderState {
   onSearchInputChange: (value: string) => void;
   onSearchCommit: () => void;
   onSearchCancel: () => void;
-  /** Conversation actions — only populated when a chat is selected. */
-  isMuted?: boolean;
-  onToggleMute?: () => void;
-  onDelete?: () => void;
-  onLeave?: () => void;
-  showInfoButton?: boolean;
+  /** Opens the info pane; only set when a chat is selected and the info pane is not already on screen. */
   onToggleInfo?: () => void;
 }
 
@@ -301,6 +297,13 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   // Delete hides the chat until the next message; leave also stops the
   // messages, which is what makes it the stronger of the two.
   const [confirmAction, setConfirmAction] = useState<"delete" | "leave" | null>(null);
+  const toggleMute = (chatId: string) =>
+    setMutedChats((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) next.delete(chatId);
+      else next.add(chatId);
+      return next;
+    });
 
   const multiPane = isMd;
   const threePane = isXl;
@@ -425,18 +428,9 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           ? () => setShowInfo(false)
           : () => setSelectedChatId(null)
         : undefined,
-      isMuted: mutedChats.has(selectedChat.id),
-      onToggleMute: () =>
-        setMutedChats((prev) => {
-          const next = new Set(prev);
-          if (next.has(selectedChat.id)) next.delete(selectedChat.id);
-          else next.add(selectedChat.id);
-          return next;
-        }),
-      onDelete: () => setConfirmAction("delete"),
-      onLeave: () => setConfirmAction("leave"),
-      showInfoButton: !threePane,
-      onToggleInfo: () => setShowInfo((v) => !v),
+      // The info pane carries the chat actions; with three panes it is always
+      // on screen, otherwise the bar offers a button to open it.
+      onToggleInfo: threePane ? undefined : () => setShowInfo((v) => !v),
     });
     return () => onHeaderChange(null);
   }, [
@@ -446,7 +440,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     multiPane,
     threePane,
     showInfo,
-    mutedChats,
     searching,
     searchInput,
   ]);
@@ -605,7 +598,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
 
   /* ── Chat list pane ── */
   const chatListPane = (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "background.paper" }}>
+    <Box sx={{ position: "relative", display: "flex", flexDirection: "column", height: "100%", bgcolor: "background.paper" }}>
       {/* Filters */}
       <Box sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "divider", flexWrap: "wrap" }}>
         <Chip
@@ -622,17 +615,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           variant={!showGroups ? "filled" : "outlined"}
           onClick={() => setShowGroups((v) => !v)}
         />
-        <Tooltip title="New chat">
-          <IconButton
-            size="small"
-            aria-label="new chat"
-            onClick={() => setNewChatOpen(true)}
-            disabled={chatMailbox === null}
-            sx={{ ml: "auto" }}
-          >
-            <AddCommentIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
       </Box>
 
       {activeFilter && (
@@ -781,6 +763,16 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
           );
         })}
       </List>
+
+      <Fab
+        color="primary"
+        aria-label="new chat"
+        onClick={() => setNewChatOpen(true)}
+        disabled={chatMailbox === null}
+        sx={{ position: "absolute", bottom: 24, right: 24 }}
+      >
+        <EditIcon />
+      </Fab>
     </Box>
   );
 
@@ -1086,6 +1078,13 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
 
       <Divider />
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", px: 1, py: 1 }}>
+        <Button
+          color="inherit"
+          startIcon={mutedChats.has(selectedChat.id) ? <VolumeUpIcon /> : <VolumeOffIcon />}
+          onClick={() => toggleMute(selectedChat.id)}
+        >
+          {mutedChats.has(selectedChat.id) ? "Unmute chat" : "Mute chat"}
+        </Button>
         <Button color="error" startIcon={<DeleteOutlineIcon />} onClick={() => setConfirmAction("delete")}>
           Delete chat
         </Button>

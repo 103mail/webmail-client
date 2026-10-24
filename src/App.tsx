@@ -40,12 +40,8 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TodayIcon from "@mui/icons-material/Today";
 import ViewAgendaIcon from "@mui/icons-material/ViewAgenda";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
-import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import type { MailThread } from "./types";
@@ -77,7 +73,6 @@ export function App() {
   const [calendarHeader, setCalendarHeader] = useState<CalendarHeaderState | null>(null);
   const [calViewAnchor, setCalViewAnchor] = useState<null | HTMLElement>(null);
   const [chatListMenuAnchor, setChatListMenuAnchor] = useState<null | HTMLElement>(null);
-  const [chatMenuAnchor, setChatMenuAnchor] = useState<null | HTMLElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const { user, api } = useSession();
   const { logout } = useAuth();
@@ -294,7 +289,7 @@ export function App() {
   const showLogo = !showBackArrow && !showHamburger && !(section === "chat" && layout === "mobile" && !chatHeader?.title);
   const showSearchBar = showMailToolbar && (multiPane || mailView === "list");
   const showThreadActions = showMailToolbar && selectedThread && (multiPane ? mailView === "thread" : mailView === "thread");
-  const showChatConvoActions = section === "chat" && chatHeader?.onToggleMute !== undefined;
+  const showChatInfoButton = section === "chat" && chatHeader?.onToggleInfo !== undefined;
   const showChatSearchBar = section === "chat" && Boolean(chatHeader?.showSearchButton);
   const chatSearching = showChatSearchBar && Boolean(chatHeader?.searching);
   const showChatListMenu = section === "chat" && layout === "mobile" && !chatHeader?.title && !chatSearching;
@@ -530,31 +525,12 @@ export function App() {
               )}
 
               {/* Chat actions */}
-              {showChatConvoActions && !chatSearching && (
-                <>
-                  <Tooltip title={chatHeader!.isMuted ? "Unmute" : "Mute"}>
-                    <IconButton color="inherit" aria-label="toggle mute" onClick={chatHeader!.onToggleMute}>
-                      {chatHeader!.isMuted ? <VolumeUpIcon /> : <VolumeOffIcon />}
-                    </IconButton>
-                  </Tooltip>
-                  {chatHeader!.showInfoButton && (
-                    <Tooltip title="Info">
-                      <IconButton color="inherit" aria-label="show info" onClick={chatHeader!.onToggleInfo}>
-                        <InfoOutlinedIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  <Tooltip title="More">
-                    <IconButton
-                      color="inherit"
-                      aria-label="chat options"
-                      edge="end"
-                      onClick={(e) => setChatMenuAnchor(e.currentTarget)}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
-                  </Tooltip>
-                </>
+              {showChatInfoButton && !chatSearching && (
+                <Tooltip title="Info">
+                  <IconButton color="inherit" aria-label="show info" edge="end" onClick={chatHeader!.onToggleInfo}>
+                    <InfoOutlinedIcon />
+                  </IconButton>
+                </Tooltip>
               )}
 
               {/* Calendar actions */}
@@ -655,32 +631,6 @@ export function App() {
           >
             <AccountCircleIcon fontSize="small" sx={{ mr: 1.5 }} />
             Account
-          </MenuItem>
-        </Menu>
-        <Menu
-          anchorEl={chatMenuAnchor}
-          open={Boolean(chatMenuAnchor)}
-          onClose={() => setChatMenuAnchor(null)}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
-        >
-          <MenuItem
-            onClick={() => {
-              setChatMenuAnchor(null);
-              chatHeader?.onDelete?.();
-            }}
-          >
-            <DeleteOutlineIcon fontSize="small" sx={{ mr: 1.5 }} />
-            Delete chat
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setChatMenuAnchor(null);
-              chatHeader?.onLeave?.();
-            }}
-          >
-            <LogoutIcon fontSize="small" sx={{ mr: 1.5 }} />
-            Leave chat
           </MenuItem>
         </Menu>
         <Menu
