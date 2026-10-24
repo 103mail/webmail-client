@@ -73,6 +73,7 @@ export interface ChatMessage {
   body: string;
   timestamp: string;          // ISO date string
   status: ChatMessageStatus;  // for outgoing messages
+  isPreview?: boolean;        // stands in from the chat listing; status unknown
   attachments?: ChatAttachment[];
   images?: ChatImage[];
 }

@@ -135,7 +135,22 @@ export function toChatParticipants(chat: ApiChat): ChatParticipant[] {
   }));
 }
 
-export function toChat(chat: ApiChat, self: string, messages: ChatMessage[] = []): Chat {
+// The listing previews the newest message without its delivery state, so the
+// stand-in is marked and the list leaves out the ticks rather than guess them.
+function toPreview(chat: ApiChat): ChatMessage[] {
+  if (!chat.lastMessage) return [];
+  return [{
+    id: `preview-${chat.chatId}`,
+    chatId: String(chat.chatId),
+    fromId: chat.lastMessage.senderEmail,
+    body: chat.lastMessage.body,
+    timestamp: chat.lastMessage.createdAt,
+    status: "sent",
+    isPreview: true,
+  }];
+}
+
+export function toChat(chat: ApiChat, self: string, messages: ChatMessage[] = toPreview(chat)): Chat {
   const others = chat.participants.filter((p) => p.email !== self);
   const name =
     chat.name ?? (others[0] ? others[0].name || others[0].email : "Chat");

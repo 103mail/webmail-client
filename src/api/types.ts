@@ -147,6 +147,16 @@ export interface ApiChat {
   createdAt: string;
   /** When the newest message was sent, or empty for a chat with none. */
   lastMessageAt: string;
+  /** The newest message, for the list preview, or null for a chat with none. */
+  lastMessage: ApiMessagePreview | null;
+}
+
+export interface ApiMessagePreview {
+  senderEmail: string;
+  senderName: string;
+  body: string;
+  createdAt: string;
+  attachmentCount: number;
 }
 
 export interface ApiChatParticipant {

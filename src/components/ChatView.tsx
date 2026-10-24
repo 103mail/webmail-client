@@ -310,7 +310,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
   const chatList = chatData.chats;
   const { data: openMessages, reload: reloadMessages, append } = useChatMessages(selectedChatId);
   const [sendError, setSendError] = useState("");
-
   // The live connection. Messages arrive as frames and are appended; anything
   // that changes a chat's own row, like an unread count, re-reads the list.
   const socket = useChatSocket({
@@ -323,8 +322,8 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     onError: setSendError,
   });
 
-  // The open chat carries its messages; the rest carry none, which is all the
-  // list needs beyond what the chat row itself reports.
+  // The open chat carries its messages; the rest carry the preview of their
+  // newest one from the listing, which is all the list needs.
   const chats = useMemo<Chat[]>(
     () =>
       chatList.map((chat) =>
@@ -750,13 +749,16 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                             sx={{ flexGrow: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
                             component="span"
                           >
+                            {/* A chat with no messages keeps the line, so every row is
+                                the same height. */}
+                            {!lastMsg && "\u00a0"}
                             {lastMsg && (() => {
                               const preview = lastMsg.body
                                 || (lastMsg.images?.length ? `📷 ${lastMsg.images.length} photo${lastMsg.images.length > 1 ? "s" : ""}` : "")
                                 || (lastMsg.attachments?.length ? `📎 ${lastMsg.attachments[0].name}` : "");
                               return (
                                 <>
-                                  {lastMsg.fromId === me && <StatusIcon status={lastMsg.status} />}
+                                  {lastMsg.fromId === me && !lastMsg.isPreview && <StatusIcon status={lastMsg.status} />}
                                   {" "}
                                   {chat.isGroup && `${senderName}: `}
                                   {preview}
