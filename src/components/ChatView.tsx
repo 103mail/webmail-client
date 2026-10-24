@@ -1032,15 +1032,20 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
         )}
         {!selectedChat.isGroup && (() => {
           const other = participantMap.get(selectedChat.participants.find((p) => p !== me) ?? "");
+          // The listing carries no presence, so the status is often unknown;
+          // an empty chip says nothing, so there is none then.
+          const status = liveStatus(selectedChat, me, participantMap, socket.presence);
           return other ? (
             <>
               <Typography variant="body2" color="text.secondary">{other.email}</Typography>
-              <Chip
-                size="small"
-                label={other.status}
-                color={other.status === "online" ? "success" : "default"}
-                variant="outlined"
-              />
+              {status && (
+                <Chip
+                  size="small"
+                  label={status}
+                  color={status === "online" ? "success" : "default"}
+                  variant="outlined"
+                />
+              )}
             </>
           ) : null;
         })()}
