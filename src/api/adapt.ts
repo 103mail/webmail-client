@@ -12,6 +12,7 @@ import type {
   Attachment,
   Chat,
   ChatMessage,
+  ChatMessageStatus,
   ChatParticipant,
   Contact,
   MailAccount,
@@ -24,6 +25,7 @@ import type {
   ApiChat,
   ApiChatMessage,
   ApiContact,
+  ApiDeliveryStatus,
   ApiFolder,
   ApiMailbox,
   ApiMessage,
@@ -135,8 +137,19 @@ export function toChatParticipants(chat: ApiChat): ChatParticipant[] {
   }));
 }
 
-// The listing previews the newest message without its delivery state, so the
-// stand-in is marked and the list leaves out the ticks rather than guess them.
+// The ticks on your own message. They come from how many participants' copies
+// were delivered and read, not from your own copy, which the server marks read
+// the moment you send. Every count includes the sender, so "all of them" is the
+// test, and a message nobody else has a copy of has only been sent.
+function deliveryTicks(status: ApiDeliveryStatus | null): ChatMessageStatus {
+  if (!status || status.sent <= 1) return "sent";
+  if (status.read >= status.sent) return "read";
+  if (status.delivered >= status.sent) return "delivered";
+  return "sent";
+}
+
+// The listing's preview of the newest message, as a stand-in until the chat is
+// opened and its messages are read.
 function toPreview(chat: ApiChat): ChatMessage[] {
   if (!chat.lastMessage) return [];
   return [{
@@ -145,8 +158,7 @@ function toPreview(chat: ApiChat): ChatMessage[] {
     fromId: chat.lastMessage.senderEmail,
     body: chat.lastMessage.body,
     timestamp: chat.lastMessage.createdAt,
-    status: "sent",
-    isPreview: true,
+    status: deliveryTicks(chat.lastMessage.deliveryStatus),
   }];
 }
 
@@ -177,7 +189,7 @@ export function toChatMessage(message: ApiChatMessage, chatId: string): ChatMess
     fromId: message.senderEmail,
     body: message.body,
     timestamp: message.createdAt,
-    status: message.readAt ? "read" : message.deliveredAt ? "delivered" : "sent",
+    status: deliveryTicks(message.deliveryStatus),
     attachments: message.attachments.map((a) => ({
       id: String(a.attachmentId),
       name: a.fileName,

@@ -157,6 +157,7 @@ export interface ApiMessagePreview {
   body: string;
   createdAt: string;
   attachmentCount: number;
+  deliveryStatus: ApiDeliveryStatus | null;
 }
 
 export interface ApiChatParticipant {

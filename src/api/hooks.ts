@@ -278,36 +278,58 @@ export function useChats(mailbox: ChatMailbox | null, search: string): Async<Cha
   );
 }
 
+const NO_MESSAGES: ChatMessage[] = [];
+
 export function useChatMessages(chatId: string | null): Async<ChatMessage[]> & {
   append: (message: ChatMessage) => void;
 } {
   const { api } = useSession();
-  const result = useAsync<ChatMessage[]>(
+  // The loaded messages remember which chat they are of. useAsync keeps the
+  // previous value while the next one loads, which for a conversation means
+  // showing the last chat's messages under the new chat's name.
+  const result = useAsync<{ chatId: string | null; messages: ChatMessage[] }>(
     async () => {
-      if (!chatId) return [];
+      if (!chatId) return { chatId, messages: [] };
       // The API answers newest first, which is what a mail thread wants and the
       // opposite of what a conversation does: the pane renders top to bottom
       // and appends what you send at the end.
       const messages = await api.chatMessages(Number(chatId));
-      return messages
-        .map((message) => toChatMessage(message, chatId))
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      return {
+        chatId,
+        messages: messages
+          .map((message) => toChatMessage(message, chatId))
+          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+      };
     },
-    [],
+    { chatId: null, messages: [] },
     [chatId]
   );
+  const { setData } = result;
 
   // A message arriving on the socket is appended rather than triggering a
   // re-read: the frame carries the whole message, and re-reading would put a
   // round trip between someone sending and everyone seeing it.
   const append = useCallback((message: ChatMessage) => {
-    result.setData((previous) => {
-      if (previous.some((m) => m.id === message.id)) return previous;
-      return [...previous, message].sort(
-        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      );
+    setData((previous) => {
+      if (previous.chatId !== message.chatId) return previous;
+      if (previous.messages.some((m) => m.id === message.id)) return previous;
+      return {
+        ...previous,
+        messages: [...previous.messages, message].sort(
+          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        ),
+      };
     });
-  }, [result]);
+  }, [setData]);
 
-  return { ...result, append };
+  const messages = result.data.chatId === chatId ? result.data.messages : NO_MESSAGES;
+  return {
+    data: messages,
+    loading: result.loading,
+    error: result.error,
+    reload: result.reload,
+    setData: (update) =>
+      setData((previous) => ({ ...previous, messages: update(previous.messages) })),
+    append,
+  };
 }

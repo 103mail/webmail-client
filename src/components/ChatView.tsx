@@ -323,15 +323,14 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     onError: setSendError,
   });
 
-  // The open chat carries its messages; the rest carry the preview of their
-  // newest one from the listing, which is all the list needs.
-  const chats = useMemo<Chat[]>(
-    () =>
-      chatList.map((chat) =>
-        chat.id === selectedChatId ? { ...chat, messages: openMessages } : chat,
-      ),
-    [chatList, selectedChatId, openMessages],
-  );
+  // Every row of the list shows the listing's preview, the open one included,
+  // so selecting a chat does not redraw its row from a different source. Only
+  // the conversation pane carries the open chat's messages.
+  const chats = chatList;
+  const selectedChat = useMemo<Chat | null>(() => {
+    const chat = chatList.find((c) => c.id === selectedChatId);
+    return chat ? { ...chat, messages: openMessages } : null;
+  }, [chatList, selectedChatId, openMessages]);
 
   const participantMap = chatData.participants;
 
@@ -352,7 +351,6 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
     return list;
   }, [chats, filterUnread, showGroups, activeFilter]);
 
-  const selectedChat = chats.find((c) => c.id === selectedChatId) ?? null;
 
   /* auto-select first chat on desktop */
   useEffect(() => {
@@ -759,7 +757,7 @@ export function ChatView({ onHeaderChange }: ChatViewProps = {}) {
                                 || (lastMsg.attachments?.length ? `📎 ${lastMsg.attachments[0].name}` : "");
                               return (
                                 <>
-                                  {lastMsg.fromId === me && !lastMsg.isPreview && <StatusIcon status={lastMsg.status} />}
+                                  {lastMsg.fromId === me && <StatusIcon status={lastMsg.status} />}
                                   {" "}
                                   {chat.isGroup && `${senderName}: `}
                                   {preview}
