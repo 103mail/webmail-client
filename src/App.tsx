@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   AppBar,
   Box,
@@ -107,9 +107,36 @@ export function App() {
   // that returns a folder's threads with their bodies.
   const { data: mailboxes, reload: reloadMailboxes } = useAccounts(activeFilter);
   const accounts = mailboxes.accounts;
-  const { data: folderThreads, loading: threadsLoading, error: threadsError, reload: reloadThreads } =
+  const { data: folderThreads, loading: threadsLoading, error: threadsError, reload: reloadThreads, setData: setFolderThreads } =
     useThreads(selectedFolder, activeFilter);
   const { thread: openThread } = useThreadMessages(selectedThread);
+
+  // Opening a thread fetches its messages. When that turns up more than the
+  // list knew about, bring the list entry up to date, and mark the list dirty:
+  // if one thread was stale, others may be too. The list is refetched the next
+  // time the list view is entered.
+  const listDirty = useRef(false);
+  useEffect(() => {
+    if (!openThread?.messagesLoaded) return;
+    const { id, messages } = openThread;
+    const newest = messages[messages.length - 1];
+    const listed = folderThreads.find((t) => t.id === id);
+    if (!newest || !listed || (listed.messageCount ?? 0) >= messages.length) return;
+    listDirty.current = true;
+    setFolderThreads((previous) =>
+      previous.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              messageCount: messages.length,
+              updatedAt: newest.date,
+              summary: newest.body.replace(/\s+/g, " ").trim().slice(0, 140),
+              read: true,
+            }
+          : t
+      )
+    );
+  }, [openThread, folderThreads, setFolderThreads]);
 
   // The first folder to show is whichever the server calls default; there is no
   // folder to select until the mailboxes have been read.
@@ -129,6 +156,14 @@ export function App() {
     reloadThreads();
     reloadMailboxes();
   }, [reloadThreads, reloadMailboxes]);
+
+  // Entering the list view with a dirty list fetches it again.
+  useEffect(() => {
+    if (section === "mail" && mailView === "list" && listDirty.current) {
+      listDirty.current = false;
+      refresh();
+    }
+  }, [section, mailView, refresh]);
 
   // Auto-select first thread in multi-pane mode (only when no active filter).
   // Right after a folder change the list still holds the previous folder's
@@ -161,7 +196,10 @@ export function App() {
   };
 
   const handleSelectThread = (thread: MailThread) => {
-    setSelectedThread(thread);
+    // Clicking the thread that is already open would set the same object, and
+    // useThreadMessages only fetches when it changes. A copy makes it fetch
+    // again, and keeps the messages on screen while it does.
+    setSelectedThread(selectedThread?.id === thread.id ? { ...thread } : thread);
     setMailView("thread");
     if (!multiPane) {
       history.pushState({ mailView: "thread", threadId: thread.id }, "");
