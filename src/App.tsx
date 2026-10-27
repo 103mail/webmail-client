@@ -147,6 +147,9 @@ export function App() {
   }, [multiPane, folderThreads, selectedThread, selectedFolder, activeFilter]);
 
   const handleSelectFolder = (folderId: string) => {
+    // Picking the folder that is already open changes no dependency of
+    // useThreads, so ask for the list again to pick up new mail.
+    if (folderId === selectedFolder) refresh();
     setSelectedFolder(folderId);
     setCheckedIds(new Set());
     // The threads of the new folder are still loading, so nothing can be
@@ -232,6 +235,8 @@ export function App() {
   const handleSectionChange = (s: Section) => {
     setSection(s);
     setCheckedIds(new Set());
+    // The list is not remounted when coming back to mail, so refetch it.
+    if (s === "mail") refresh();
   };
 
   const title =
